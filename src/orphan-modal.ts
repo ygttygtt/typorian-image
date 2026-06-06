@@ -225,7 +225,7 @@ export class OrphanImageModal extends Modal {
       new Notice(t('orphan.repairAllFixed', { scanned: result.scanned, fixed: result.fixed }));
       await this.scanAndRender();
     } else {
-      new Notice(t('orphan.repairNone'));
+      new Notice(t('orphan.repairAllNone'));
     }
   }
 

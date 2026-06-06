@@ -39,6 +39,7 @@ type LocaleKey =
   | 'orphan.repairFixed'
   | 'orphan.repairAllFixed'
   | 'orphan.repairNone'
+  | 'orphan.repairAllNone'
   | 'orphan.repairNoActive';
 
 const zh: Record<LocaleKey, string> = {
@@ -88,6 +89,7 @@ const zh: Record<LocaleKey, string> = {
   'orphan.repairFixed': '已修复 {count} 处失效链接，正在重新扫描...',
   'orphan.repairAllFixed': '已扫描 {scanned} 篇笔记，修复 {fixed} 处失效链接。',
   'orphan.repairNone': '当前笔记中未发现失效图片链接。',
+  'orphan.repairAllNone': '所有笔记中均未发现失效图片链接。',
   'orphan.repairNoActive': '请先打开一个笔记，再执行链接修复。',
 };
 
@@ -139,6 +141,7 @@ const en: Record<LocaleKey, string> = {
   'orphan.repairFixed': 'Repaired {count} broken link(s). Rescanning...',
   'orphan.repairAllFixed': 'Scanned {scanned} notes, repaired {fixed} broken link(s).',
   'orphan.repairNone': 'No broken image links found in current note.',
+  'orphan.repairAllNone': 'No broken image links found across all notes.',
   'orphan.repairNoActive': 'Please open a note first to repair links.',
 };
 
