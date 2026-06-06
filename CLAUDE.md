@@ -70,10 +70,10 @@ paste/drop event (capture phase)
 - `view.state.selection.main.head` — cursor position
 - `view.posAtCoords({ x, y })` — screen coords to document offset
 
-### Orphan Image Cleanup Flow
+### Image Audit Flow
 
 ```
-User triggers "Orphan Image Cleanup" (ribbon icon or command palette)
+User triggers "Image Audit" (ribbon icon or command palette)
   -> new OrphanImageModal(app).open()
   -> OrphanDetector.scan()
      -> vault.getFiles() -> filter .assets images

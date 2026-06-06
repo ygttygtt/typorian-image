@@ -72,11 +72,11 @@ With these settings, both applications store images in the same `.assets` folder
 
 ## Broken Image Repair
 
-If your notes contain broken image links (e.g., from moving files between editors or changing OS), the repair tool is integrated directly into the Orphan Image Cleanup modal.
+If your notes contain broken image links (e.g., from moving files between editors or changing OS), the repair tool is integrated directly into the Image Audit modal.
 
 ### How to Use
 
-1. Open the Orphan Image Cleanup modal (ribbon icon or command palette)
+1. Open the Image Audit modal (ribbon icon or command palette)
 2. Click the **"Repair broken links in current note"** button in the bottom-left corner
 3. The plugin repairs broken links in the active note and automatically rescans
 
@@ -109,14 +109,14 @@ This approach ensures:
 - Undo/redo works correctly
 - Regular typing and backspace are unaffected
 
-## Orphan Image Cleanup
+## Image Audit
 
 Over time, `.assets` folders may accumulate images that are no longer referenced by any note. This plugin provides a built-in health check tool to find and safely remove them.
 
 ### How to Use
 
 1. Click the trash icon in the left sidebar (Ribbon), or
-2. Open the Command Palette and run "Orphan Image Cleanup"
+2. Open the Command Palette and run "Image Audit"
 
 The modal will scan all `.assets` folders and display a checklist of unreferenced images with:
 
