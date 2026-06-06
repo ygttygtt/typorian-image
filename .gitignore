@@ -1,0 +1,40 @@
+# node_modules
+node_modules/
+
+# build output
+main.js
+*.js.map
+
+# data.json
+data.json
+
+# npm
+package-lock.json
+npm-debug.log*
+
+# yarn
+yarn.lock
+yarn-error.log
+
+# pnpm
+pnpm-lock.yaml
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# env
+.env
+.env.local
+
+# logs
+*.log
+
+# standard-version
+CHANGELOG.md

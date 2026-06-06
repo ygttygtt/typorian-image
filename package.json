@@ -1,0 +1,23 @@
+{
+  "name": "typorian-image",
+  "version": "0.1.0",
+  "description": "Enforce standard Markdown image syntax with Typora-style .assets folder",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "node esbuild.config.mjs production",
+    "version": "standard-version"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "builtin-modules": "^4.0.0",
+    "esbuild": "^0.21.0",
+    "obsidian": "latest",
+    "standard-version": "^9.5.0",
+    "tslib": "^2.6.0",
+    "typescript": "^5.3.0"
+  }
+}
