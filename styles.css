@@ -122,6 +122,18 @@
   background-color: var(--background-modifier-hover);
 }
 
+.orphan-locate-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.orphan-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
 .orphan-repair-btn {
   color: var(--text-muted);
   background: transparent;
@@ -143,15 +155,44 @@
   cursor: not-allowed;
 }
 
+.orphan-refresh-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.1s ease, border-color 0.1s ease;
+}
+
+.orphan-refresh-btn:hover {
+  color: var(--text-normal);
+  border-color: var(--text-muted);
+}
+
 .orphan-footer {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
   padding-top: 12px;
   border-top: 1px solid var(--background-modifier-border);
   margin-top: 8px;
 }
 
-.orphan-footer-spacer {
-  flex: 1;
+.orphan-footer-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.orphan-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }

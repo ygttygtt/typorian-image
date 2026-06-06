@@ -14,12 +14,17 @@ interface BrokenMatch {
   fileName: string;
 }
 
+export interface RepairAllResult {
+  scanned: number;
+  fixed: number;
+}
+
 export class BrokenLinkRepairer {
   constructor(private app: App) {}
 
   /**
-   * Repair broken image links in the active note.
-   * Returns the number of links repaired.
+   * Repair broken image links in the active note (via EditorView).
+   * Returns the number of links repaired, or -1 if no active note.
    */
   async repair(view: EditorView): Promise<number> {
     const activeFile = this.getActiveFile();
@@ -28,7 +33,69 @@ export class BrokenLinkRepairer {
     const content = view.state.doc.toString();
     const noteDir = activeFile.parent?.path ?? '';
 
-    // Collect all broken image matches
+    const broken = this.findBrokenLinks(content, noteDir);
+    if (broken.length === 0) return 0;
+
+    const vaultImages = this.buildVaultImageIndex();
+    const replacements = this.computeReplacements(broken, vaultImages, noteDir);
+
+    if (replacements.length > 0) {
+      replacements.sort((a, b) => b.from - a.from);
+      for (const r of replacements) {
+        view.dispatch({
+          changes: { from: r.from, to: r.to, insert: r.insert },
+        });
+      }
+    }
+
+    return replacements.length;
+  }
+
+  /**
+   * Repair broken image links across ALL markdown notes in the vault.
+   * Operates directly on file content (no editor needed).
+   */
+  async repairAll(): Promise<RepairAllResult> {
+    const mdFiles = this.app.vault.getMarkdownFiles();
+    const vaultImages = this.buildVaultImageIndex();
+    let scanned = 0;
+    let fixed = 0;
+
+    for (const mdFile of mdFiles) {
+      const content = await this.app.vault.read(mdFile);
+      const noteDir = mdFile.parent?.path ?? '';
+
+      const broken = this.findBrokenLinks(content, noteDir);
+      if (broken.length === 0) {
+        scanned++;
+        continue;
+      }
+
+      const replacements = this.computeReplacements(broken, vaultImages, noteDir);
+      if (replacements.length === 0) {
+        scanned++;
+        continue;
+      }
+
+      // Apply replacements from end to start (preserve offsets)
+      replacements.sort((a, b) => b.from - a.from);
+      let newContent = content;
+      for (const r of replacements) {
+        newContent = newContent.substring(0, r.from) + r.insert + newContent.substring(r.to);
+      }
+
+      await this.app.vault.modify(mdFile, newContent);
+      fixed += replacements.length;
+      scanned++;
+    }
+
+    return { scanned, fixed };
+  }
+
+  /**
+   * Find all broken image links in content relative to noteDir.
+   */
+  private findBrokenLinks(content: string, noteDir: string): BrokenMatch[] {
     const broken: BrokenMatch[] = [];
     let match: RegExpExecArray | null;
 
@@ -36,18 +103,16 @@ export class BrokenLinkRepairer {
     while ((match = MD_IMAGE_REGEX.exec(content)) !== null) {
       const rawPath = match[2];
 
-      // Skip external URLs
       if (rawPath.startsWith('http://') || rawPath.startsWith('https://')) continue;
 
       const cleanedPath = this.cleanPath(rawPath);
       const fileName = this.extractFileName(cleanedPath);
       if (!fileName) continue;
 
-      // Check if the cleaned path resolves to an existing file
       const resolvedPath = this.resolveRelativePath(noteDir, cleanedPath);
       const existing = this.app.vault.getAbstractFileByPath(normalizePath(resolvedPath));
       if (existing instanceof TFile && IMAGE_EXTENSIONS.has(existing.extension.toLowerCase())) {
-        continue; // Link is valid, skip
+        continue;
       }
 
       broken.push({
@@ -60,13 +125,17 @@ export class BrokenLinkRepairer {
       });
     }
 
-    if (broken.length === 0) return 0;
+    return broken;
+  }
 
-    // Build a map of all image files in the vault for fast lookup
-    const vaultImages = this.buildVaultImageIndex();
-
-    // Process repairs in reverse order (so offsets remain valid)
-    let repaired = 0;
+  /**
+   * Compute replacement specs for broken links.
+   */
+  private computeReplacements(
+    broken: BrokenMatch[],
+    vaultImages: Map<string, TFile[]>,
+    noteDir: string
+  ): Array<{ from: number; to: number; insert: string }> {
     const replacements: Array<{ from: number; to: number; insert: string }> = [];
 
     for (const b of broken) {
@@ -74,54 +143,21 @@ export class BrokenLinkRepairer {
       if (found) {
         const newLink = `![${b.alt}](${found})`;
         replacements.push({ from: b.from, to: b.to, insert: newLink });
-        repaired++;
       }
     }
 
-    // Apply all replacements in a single dispatch (atomic, cursor-safe)
-    if (replacements.length > 0) {
-      // Sort by position descending to apply from end to start
-      replacements.sort((a, b) => b.from - a.from);
-
-      // Build a single changes array for CM6
-      // CM6 can handle overlapping changes if we use the spec correctly
-      // But since we sorted descending and non-overlapping, direct apply works
-      for (const r of replacements) {
-        view.dispatch({
-          changes: { from: r.from, to: r.to, insert: r.insert },
-        });
-      }
-    }
-
-    return repaired;
+    return replacements;
   }
 
-  /**
-   * Clean a raw image path:
-   * - Replace backslashes with forward slashes
-   * - Strip absolute path prefixes (drive letters, system roots)
-   */
   private cleanPath(rawPath: string): string {
     let path = rawPath.replace(/\\/g, '/');
-
-    // Strip Windows absolute paths: C:\, D:\, etc.
     path = path.replace(/^[A-Za-z]:\//, '');
-
-    // Strip UNC paths: //server/share/
     path = path.replace(/^\/\/[^/]+\//, '');
-
-    // Strip leading slashes (Unix absolute)
     path = path.replace(/^\/+/, '');
-
-    // Remove URL encoding for spaces
     path = path.replace(/%20/g, ' ');
-
     return path;
   }
 
-  /**
-   * Extract the pure filename from a cleaned path.
-   */
   private extractFileName(cleanedPath: string): string | null {
     const parts = cleanedPath.split('/');
     const fileName = parts[parts.length - 1];
@@ -131,9 +167,6 @@ export class BrokenLinkRepairer {
     return fileName;
   }
 
-  /**
-   * Resolve a relative path against the note's directory.
-   */
   private resolveRelativePath(noteDir: string, relativePath: string): string {
     if (relativePath.startsWith('./')) {
       relativePath = relativePath.substring(2);
@@ -141,9 +174,6 @@ export class BrokenLinkRepairer {
     return noteDir ? `${noteDir}/${relativePath}` : relativePath;
   }
 
-  /**
-   * Build an index of all image files in the vault, grouped by filename.
-   */
   private buildVaultImageIndex(): Map<string, TFile[]> {
     const index = new Map<string, TFile[]>();
     const allFiles = this.app.vault.getFiles();
@@ -160,11 +190,6 @@ export class BrokenLinkRepairer {
     return index;
   }
 
-  /**
-   * Search the vault for an image file matching the given filename.
-   * Prefers files in .assets directories, then any location.
-   * Returns the relative path from the note directory, or null if not found.
-   */
   private searchVault(
     index: Map<string, TFile[]>,
     fileName: string,
@@ -173,26 +198,19 @@ export class BrokenLinkRepairer {
     const candidates = index.get(fileName.toLowerCase());
     if (!candidates || candidates.length === 0) return null;
 
-    // Prefer candidates in .assets folders
     const assetsCandidates = candidates.filter((f) => f.path.includes('.assets/'));
     const pool = assetsCandidates.length > 0 ? assetsCandidates : candidates;
 
-    // Prefer candidates closest to the note (same directory first)
     const sameDir = pool.filter((f) => f.parent?.path === noteDir);
     const target = sameDir.length > 0 ? sameDir[0] : pool[0];
 
-    // Compute relative path from note directory
     return this.computeRelativePath(noteDir, target.path);
   }
 
-  /**
-   * Compute relative path from noteDir to targetPath.
-   */
   private computeRelativePath(noteDir: string, targetPath: string): string {
     const noteParts = noteDir ? noteDir.split('/') : [];
     const targetParts = targetPath.split('/');
 
-    // Find common prefix length
     let commonLen = 0;
     for (let i = 0; i < Math.min(noteParts.length, targetParts.length - 1); i++) {
       if (noteParts[i] === targetParts[i]) {

@@ -29,9 +29,15 @@ type LocaleKey =
   | 'orphan.cleanupCount'
   | 'orphan.trashNotice'
   | 'orphan.locate'
+  | 'orphan.locateFolder'
+  | 'orphan.locateNote'
+  | 'orphan.noteNotFound'
+  | 'orphan.refresh'
   | 'orphan.repair'
+  | 'orphan.repairAll'
   | 'orphan.repairing'
   | 'orphan.repairFixed'
+  | 'orphan.repairAllFixed'
   | 'orphan.repairNone'
   | 'orphan.repairNoActive';
 
@@ -72,9 +78,15 @@ const zh: Record<LocaleKey, string> = {
   'orphan.cleanupCount': '安全清理 ({count} 个文件)',
   'orphan.trashNotice': '已将 {count} 张孤儿图片移入回收站。',
   'orphan.locate': '定位文件',
+  'orphan.locateFolder': '在文件资源管理器中打开',
+  'orphan.locateNote': '打开关联笔记',
+  'orphan.noteNotFound': '未找到关联笔记',
+  'orphan.refresh': '刷新列表',
   'orphan.repair': '修复当前笔记的失效链接',
+  'orphan.repairAll': '全局修复所有笔记的失效链接',
   'orphan.repairing': '正在修复失效链接...',
   'orphan.repairFixed': '已修复 {count} 处失效链接，正在重新扫描...',
+  'orphan.repairAllFixed': '已扫描 {scanned} 篇笔记，修复 {fixed} 处失效链接。',
   'orphan.repairNone': '当前笔记中未发现失效图片链接。',
   'orphan.repairNoActive': '请先打开一个笔记，再执行链接修复。',
 };
@@ -117,9 +129,15 @@ const en: Record<LocaleKey, string> = {
   'orphan.cleanupCount': 'Safe Cleanup ({count} file(s))',
   'orphan.trashNotice': 'Moved {count} orphan image(s) to trash.',
   'orphan.locate': 'Locate file',
+  'orphan.locateFolder': 'Reveal in file explorer',
+  'orphan.locateNote': 'Open linked note',
+  'orphan.noteNotFound': 'No linked note found',
+  'orphan.refresh': 'Refresh list',
   'orphan.repair': 'Repair broken links in current note',
+  'orphan.repairAll': 'Repair broken links in all notes',
   'orphan.repairing': 'Repairing broken links...',
   'orphan.repairFixed': 'Repaired {count} broken link(s). Rescanning...',
+  'orphan.repairAllFixed': 'Scanned {scanned} notes, repaired {fixed} broken link(s).',
   'orphan.repairNone': 'No broken image links found in current note.',
   'orphan.repairNoActive': 'Please open a note first to repair links.',
 };

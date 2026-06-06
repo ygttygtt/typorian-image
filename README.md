@@ -88,6 +88,13 @@ If your notes contain broken image links (e.g., from moving files between editor
 
 After repair, the orphan list refreshes automatically -- images that were "orphan" only because of broken links will disappear from the list.
 
+### Locate Buttons
+
+Each orphan image has two action buttons:
+
+- **Open linked note** (file icon): Fuzzy-matches the `.assets` folder name to find the parent markdown note. Opens it so you can verify before cleanup.
+- **Reveal in file explorer** (folder icon): Opens the `.assets` folder in your system file explorer, so you can browse related images.
+
 ## How It Works
 
 The plugin uses a CodeMirror 6 ViewPlugin that registers paste and drop event listeners at the capture phase on the editor DOM element. When an image file is detected:
