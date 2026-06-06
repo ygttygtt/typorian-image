@@ -24,7 +24,10 @@ Wiki-link functionality for notes, blocks, and headings remains completely untou
 - Auto-renames on filename conflict (image.png -> image(1).png)
 - Zero overhead on regular typing (no performance impact)
 - Full Live Preview support (images render inline as expected)
-- Orphan image detection and safe cleanup (v1.1.0)
+- Orphan image detection and safe cleanup
+- Broken image link detection and repair
+- Chinese/English bilingual interface (auto-detected)
+- Customizable asset folder path (advanced option)
 
 ## Installation
 
@@ -65,6 +68,21 @@ With these settings, both applications store images in the same `.assets` folder
 |---------|---------|-------------|
 | Image naming strategy | Keep original filename | Choose between preserving the original filename or using a timestamp |
 | Auto-rename on conflict | Enabled | Appends a sequence number when a file with the same name already exists |
+| Asset folder path (advanced) | `./${notename}.assets/` | Customizable path template for image storage |
+
+## Broken Image Repair
+
+If your notes contain broken image links (e.g., from moving files between editors or changing OS), the plugin can automatically detect and repair them.
+
+### How to Use
+
+Open the Command Palette and run **"Repair broken image links in current note"**.
+
+### What It Fixes
+
+- **Backslash paths**: `\` in image paths are normalized to `/`
+- **Absolute paths**: Windows drive letters and system roots are stripped, converting to relative paths
+- **Missing references**: If an image file exists somewhere in the vault but the link is broken, the plugin performs a vault-wide filename search and automatically computes the correct relative path
 
 ## How It Works
 
@@ -105,6 +123,8 @@ The modal will scan all `.assets` folders and display a checklist of unreference
 ### Detection Method
 
 The detector uses Obsidian's `metadataCache.resolvedLinks` index, which contains all resolved wiki-links and markdown links across the vault. This is an in-memory lookup -- no disk I/O, no regex parsing. Only images inside `.assets` folders are scanned.
+
+## Building from Source
 
 ```bash
 git clone https://github.com/ygttygtt/typorian-image.git

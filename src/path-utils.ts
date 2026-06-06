@@ -1,32 +1,19 @@
-import { App, TFile, Vault, normalizePath } from 'obsidian';
+import { TFile, Vault, normalizePath } from 'obsidian';
 import { MIME_TO_EXT } from './constants';
 
 export class PathUtils {
   /**
-   * Get the active markdown note's TFile, or null if none.
+   * Resolve the asset folder path from the template setting.
+   * Replaces ${notename} with the note's basename.
    */
-  static getActiveNoteFile(app: App): TFile | null {
-    const view = app.workspace.getActiveViewOfType(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (app as any).viewRegistry?.getTypeByName?.('markdown')?.view ??
-        undefined
-    );
-    // Fallback: use workspace.activeLeaf
-    const file = (app.workspace as any).activeLeaf?.view?.file as
-      | TFile
-      | undefined;
-    return file instanceof TFile ? file : null;
-  }
-
-  /**
-   * Build the vault-relative path for the .assets folder.
-   * e.g. note "folder/mynote.md" -> "folder/mynote.assets"
-   */
-  static getAssetFolderPath(noteFile: TFile): string {
+  static getAssetFolderPath(noteFile: TFile, assetFolderTemplate: string): string {
     const dir = noteFile.parent?.path ?? '';
-    const baseName = noteFile.basename;
-    const folderName = `${baseName}.assets`;
-    return dir ? `${dir}/${folderName}` : folderName;
+    const resolved = assetFolderTemplate.replace(/\$\{notename\}/g, noteFile.basename);
+    // Remove leading ./ if present
+    const cleaned = resolved.replace(/^\.\//, '');
+    // Remove trailing slash
+    const folder = cleaned.replace(/\/$/, '');
+    return dir ? `${dir}/${folder}` : folder;
   }
 
   /**
@@ -38,7 +25,6 @@ export class PathUtils {
 
   /**
    * Generate a unique filename inside the asset folder.
-   * If "image.png" exists -> "image(1).png" -> "image(2).png" ...
    */
   static async getUniqueFileName(
     vault: Vault,
@@ -61,12 +47,12 @@ export class PathUtils {
 
   /**
    * Build the relative path for use inside a Markdown image link.
-   * Result is URL-encoded (spaces -> %20), slashes preserved.
+   * Computes the relative path from the note's directory to the image file.
    */
-  static buildRelativePath(noteFile: TFile, imageFileName: string): string {
-    const folderName = `${noteFile.basename}.assets`;
-    const rawPath = `${folderName}/${imageFileName}`;
-    // Encode spaces and special chars, keep slashes
+  static buildRelativePath(noteFile: TFile, imageFileName: string, assetFolderTemplate: string): string {
+    const resolved = assetFolderTemplate.replace(/\$\{notename\}/g, noteFile.basename);
+    const cleaned = resolved.replace(/^\.\//, '').replace(/\/$/, '');
+    const rawPath = `${cleaned}/${imageFileName}`;
     return rawPath
       .split('/')
       .map((seg) => seg.replace(/ /g, '%20'))

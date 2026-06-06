@@ -1,5 +1,23 @@
 /* Typorian Image Plugin Styles */
 
+/* Settings Tab - Advanced section */
+.typorian-advanced-header {
+  cursor: pointer;
+  user-select: none;
+}
+
+.typorian-advanced-header::before {
+  content: '\25B6';
+  display: inline-block;
+  margin-right: 6px;
+  font-size: 0.7em;
+  transition: transform 0.15s ease;
+}
+
+.typorian-advanced-header.is-open::before {
+  transform: rotate(90deg);
+}
+
 /* Orphan Image Modal */
 .orphan-status {
   text-align: center;
@@ -39,12 +57,20 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 6px 0;
+  padding: 6px 8px;
   border-bottom: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+}
+
+.orphan-item:hover {
+  background-color: var(--background-modifier-hover);
 }
 
 .orphan-checkbox {
   flex-shrink: 0;
+  pointer-events: none;
 }
 
 .orphan-thumbnail {
@@ -73,6 +99,27 @@
 .orphan-size {
   font-size: 0.85em;
   color: var(--text-faint);
+}
+
+.orphan-locate-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.1s ease, background-color 0.1s ease;
+}
+
+.orphan-locate-btn:hover {
+  color: var(--text-normal);
+  background-color: var(--background-modifier-hover);
 }
 
 .orphan-footer {

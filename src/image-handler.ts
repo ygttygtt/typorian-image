@@ -40,7 +40,7 @@ export class ImageHandler {
     const arrayBuffer = await file.arrayBuffer();
 
     // 3. Compute paths
-    const folderPath = PathUtils.getAssetFolderPath(noteFile);
+    const folderPath = PathUtils.getAssetFolderPath(noteFile, this.settings.assetFolderPath);
     const ext = this.getExtension(file);
     const baseName = this.getBaseName(file);
     const fileName = await PathUtils.getUniqueFileName(
@@ -58,7 +58,7 @@ export class ImageHandler {
     await this.app.vault.createBinary(vaultPath, arrayBuffer);
 
     // 6. Build markdown link
-    const relativePath = PathUtils.buildRelativePath(noteFile, fileName);
+    const relativePath = PathUtils.buildRelativePath(noteFile, fileName, this.settings.assetFolderPath);
     const displayName = fileName.replace(/\.[^.]+$/, '');
     const mdLink = `![${displayName}](${relativePath})`;
 
