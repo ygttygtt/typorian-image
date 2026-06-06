@@ -271,19 +271,27 @@ export class OrphanImageModal extends Modal {
    */
   private revealInExplorer(file: TFile): void {
     const adapter = this.app.vault.adapter as any;
-    const basePath = adapter.basePath ?? adapter.getBasePath?.() ?? '';
-    const folderPath = file.parent?.path ?? '';
-    if (!folderPath || !basePath) return;
+    const basePath: string = adapter.basePath ?? '';
+    const folderPath: string = file.parent?.path ?? '';
+    if (!folderPath || !basePath) {
+      new Notice('Cannot determine folder path.');
+      return;
+    }
 
-    const fullPath = `${basePath}/${folderPath}`.replace(/\\/g, '/');
+    // Build absolute path to the .assets folder
+    const sep = basePath.includes('\\') ? '\\' : '/';
+    const fullPath = basePath + sep + folderPath.replace(/\//g, sep);
+
     try {
-      // @ts-ignore - Electron shell API available in Obsidian desktop
-      require('electron').shell.showItemInFolder(fullPath);
+      // Obsidian desktop runs in Electron with require() available
+      const { shell } = require('electron');
+      shell.showItemInFolder(fullPath);
     } catch {
-      // Fallback: open the folder as a vault folder
-      const folder = this.app.vault.getAbstractFileByPath(folderPath);
-      if (folder) {
-        this.app.workspace.getLeaf().openFile(folder as any);
+      // Fallback: try opening via Obsidian's internal API
+      try {
+        (this.app as any).openWithDefaultApp?.(folderPath);
+      } catch {
+        new Notice(`Cannot open folder: ${fullPath}`);
       }
     }
   }
