@@ -29,11 +29,11 @@ type LocaleKey =
   | 'orphan.cleanupCount'
   | 'orphan.trashNotice'
   | 'orphan.locate'
-  | 'brokenRepair.name'
-  | 'brokenRepair.notice'
-  | 'brokenRepair.noActive'
-  | 'brokenRepair.fixed'
-  | 'brokenRepair.noBroken';
+  | 'orphan.repair'
+  | 'orphan.repairing'
+  | 'orphan.repairFixed'
+  | 'orphan.repairNone'
+  | 'orphan.repairNoActive';
 
 const zh: Record<LocaleKey, string> = {
   'settings.namingStrategy.name': '图片命名策略',
@@ -72,11 +72,11 @@ const zh: Record<LocaleKey, string> = {
   'orphan.cleanupCount': '安全清理 ({count} 个文件)',
   'orphan.trashNotice': '已将 {count} 张孤儿图片移入回收站。',
   'orphan.locate': '定位文件',
-  'brokenRepair.name': '检测并修复当前笔记的失效图片链接',
-  'brokenRepair.notice': '正在修复失效图片链接...',
-  'brokenRepair.noActive': '没有打开的笔记，无法执行修复。',
-  'brokenRepair.fixed': '已修复 {count} 处失效图片链接。',
-  'brokenRepair.noBroken': '当前笔记中未发现失效图片链接。',
+  'orphan.repair': '修复当前笔记的失效链接',
+  'orphan.repairing': '正在修复失效链接...',
+  'orphan.repairFixed': '已修复 {count} 处失效链接，正在重新扫描...',
+  'orphan.repairNone': '当前笔记中未发现失效图片链接。',
+  'orphan.repairNoActive': '请先打开一个笔记，再执行链接修复。',
 };
 
 const en: Record<LocaleKey, string> = {
@@ -117,11 +117,11 @@ const en: Record<LocaleKey, string> = {
   'orphan.cleanupCount': 'Safe Cleanup ({count} file(s))',
   'orphan.trashNotice': 'Moved {count} orphan image(s) to trash.',
   'orphan.locate': 'Locate file',
-  'brokenRepair.name': 'Repair broken image links in current note',
-  'brokenRepair.notice': 'Repairing broken image links...',
-  'brokenRepair.noActive': 'No active note found, cannot perform repair.',
-  'brokenRepair.fixed': 'Repaired {count} broken image link(s).',
-  'brokenRepair.noBroken': 'No broken image links found in current note.',
+  'orphan.repair': 'Repair broken links in current note',
+  'orphan.repairing': 'Repairing broken links...',
+  'orphan.repairFixed': 'Repaired {count} broken link(s). Rescanning...',
+  'orphan.repairNone': 'No broken image links found in current note.',
+  'orphan.repairNoActive': 'Please open a note first to repair links.',
 };
 
 let currentLocale: 'zh' | 'en' = 'en';

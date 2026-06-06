@@ -72,17 +72,21 @@ With these settings, both applications store images in the same `.assets` folder
 
 ## Broken Image Repair
 
-If your notes contain broken image links (e.g., from moving files between editors or changing OS), the plugin can automatically detect and repair them.
+If your notes contain broken image links (e.g., from moving files between editors or changing OS), the repair tool is integrated directly into the Orphan Image Cleanup modal.
 
 ### How to Use
 
-Open the Command Palette and run **"Repair broken image links in current note"**.
+1. Open the Orphan Image Cleanup modal (ribbon icon or command palette)
+2. Click the **"Repair broken links in current note"** button in the bottom-left corner
+3. The plugin repairs broken links in the active note and automatically rescans
 
 ### What It Fixes
 
 - **Backslash paths**: `\` in image paths are normalized to `/`
 - **Absolute paths**: Windows drive letters and system roots are stripped, converting to relative paths
 - **Missing references**: If an image file exists somewhere in the vault but the link is broken, the plugin performs a vault-wide filename search and automatically computes the correct relative path
+
+After repair, the orphan list refreshes automatically -- images that were "orphan" only because of broken links will disappear from the list.
 
 ## How It Works
 

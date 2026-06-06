@@ -1,22 +1,42 @@
-import { App, Modal, Notice, TFile } from 'obsidian';
+import { App, Modal, Notice, TFile, MarkdownView } from 'obsidian';
 import { OrphanDetector } from './orphan-detector';
 import { OrphanImageInfo } from './orphan-types';
+import { BrokenLinkRepairer } from './broken-link-repairer';
 import { t } from './locale';
 
 export class OrphanImageModal extends Modal {
   private detector: OrphanDetector;
+  private repairer: BrokenLinkRepairer;
   private orphans: OrphanImageInfo[] = [];
   private checkboxes: Map<string, HTMLInputElement> = new Map();
   private selectAllCheckbox: HTMLInputElement | null = null;
   private cleanupButton: HTMLButtonElement | null = null;
+  private repairButton: HTMLButtonElement | null = null;
+  private listContainer: HTMLDivElement | null = null;
+  private headerContainer: HTMLDivElement | null = null;
 
   constructor(app: App) {
     super(app);
     this.detector = new OrphanDetector(app);
+    this.repairer = new BrokenLinkRepairer(app);
   }
 
   async onOpen(): Promise<void> {
     this.titleEl.setText(t('orphan.title'));
+    await this.scanAndRender();
+  }
+
+  onClose(): void {
+    this.contentEl.empty();
+  }
+
+  /**
+   * Scan the vault and render (or re-render) the full modal UI.
+   */
+  private async scanAndRender(): Promise<void> {
+    this.contentEl.empty();
+    this.checkboxes.clear();
+
     this.contentEl.createEl('p', {
       text: t('orphan.scanning'),
       cls: 'orphan-status',
@@ -30,6 +50,8 @@ export class OrphanImageModal extends Modal {
         text: t('orphan.empty'),
         cls: 'orphan-status',
       });
+      // Still show footer with repair button even when no orphans
+      this.renderFooter();
       return;
     }
 
@@ -38,14 +60,10 @@ export class OrphanImageModal extends Modal {
     this.renderFooter();
   }
 
-  onClose(): void {
-    this.contentEl.empty();
-  }
-
   private renderHeader(): void {
-    const header = this.contentEl.createDiv({ cls: 'orphan-header' });
+    this.headerContainer = this.contentEl.createDiv({ cls: 'orphan-header' });
 
-    const selectAllLabel = header.createEl('label', { cls: 'orphan-select-all-label' });
+    const selectAllLabel = this.headerContainer.createEl('label', { cls: 'orphan-select-all-label' });
     this.selectAllCheckbox = selectAllLabel.createEl('input', { type: 'checkbox' });
     selectAllLabel.createSpan({ text: t('orphan.selectAll') });
 
@@ -57,19 +75,27 @@ export class OrphanImageModal extends Modal {
       this.updateCleanupButton();
     });
 
+    this.updateSummary();
+  }
+
+  private updateSummary(): void {
+    // Remove old summary if exists
+    const oldSummary = this.headerContainer?.querySelector('.orphan-summary');
+    if (oldSummary) oldSummary.remove();
+
     const totalSize = this.orphans.reduce((sum, o) => sum + o.sizeBytes, 0);
     const sizeStr = this.formatTotalSize(totalSize);
-    header.createSpan({
+    this.headerContainer?.createSpan({
       text: `${this.orphans.length} ${t('orphan.summary')} ${sizeStr}`,
       cls: 'orphan-summary',
     });
   }
 
   private renderList(): void {
-    const list = this.contentEl.createDiv({ cls: 'orphan-list' });
+    this.listContainer = this.contentEl.createDiv({ cls: 'orphan-list' });
 
     for (const orphan of this.orphans) {
-      const item = list.createDiv({ cls: 'orphan-item' });
+      const item = this.listContainer.createDiv({ cls: 'orphan-item' });
 
       // Checkbox
       const checkbox = item.createEl('input', {
@@ -84,7 +110,7 @@ export class OrphanImageModal extends Modal {
         this.updateCleanupButton();
       });
 
-      // Thumbnail (clickable to toggle checkbox)
+      // Thumbnail
       const img = item.createEl('img', { cls: 'orphan-thumbnail' });
       img.src = this.app.vault.getResourcePath(orphan.file);
       img.alt = orphan.file.name;
@@ -107,12 +133,10 @@ export class OrphanImageModal extends Modal {
 
       // Click anywhere on the row to toggle checkbox
       item.addEventListener('click', (evt) => {
-        // Don't double-toggle if clicking the checkbox itself or the locate button
         if (evt.target === checkbox || evt.target === locateBtn || locateBtn.contains(evt.target as Node)) {
           return;
         }
         checkbox.checked = !checkbox.checked;
-        // Fire change event so listeners update
         checkbox.dispatchEvent(new Event('change'));
       });
     }
@@ -121,6 +145,17 @@ export class OrphanImageModal extends Modal {
   private renderFooter(): void {
     const footer = this.contentEl.createDiv({ cls: 'orphan-footer' });
 
+    // Left side: repair button
+    this.repairButton = footer.createEl('button', {
+      text: t('orphan.repair'),
+      cls: 'orphan-repair-btn',
+    });
+    this.repairButton.addEventListener('click', () => this.handleRepair());
+
+    // Spacer
+    footer.createDiv({ cls: 'orphan-footer-spacer' });
+
+    // Right side: cancel + cleanup
     const cancelBtn = footer.createEl('button', { text: t('orphan.cancel') });
     cancelBtn.addEventListener('click', () => this.close());
 
@@ -130,6 +165,37 @@ export class OrphanImageModal extends Modal {
     });
     this.cleanupButton.disabled = true;
     this.cleanupButton.addEventListener('click', () => this.handleCleanup());
+  }
+
+  /**
+   * Run broken link repair on the active note, then rescan.
+   */
+  private async handleRepair(): Promise<void> {
+    const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+    if (!view) {
+      new Notice(t('orphan.repairNoActive'));
+      return;
+    }
+
+    const editorView = (view as any).editor?.cm;
+    if (!editorView) return;
+
+    // Disable button during repair
+    if (this.repairButton) this.repairButton.disabled = true;
+
+    const count = await this.repairer.repair(editorView);
+
+    if (count > 0) {
+      new Notice(t('orphan.repairFixed', { count }));
+      // Rescan and re-render the modal
+      await this.scanAndRender();
+    } else if (count === 0) {
+      new Notice(t('orphan.repairNone'));
+      if (this.repairButton) this.repairButton.disabled = false;
+    } else {
+      new Notice(t('orphan.repairNoActive'));
+      if (this.repairButton) this.repairButton.disabled = false;
+    }
   }
 
   private syncSelectAll(): void {

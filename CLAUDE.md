@@ -86,23 +86,24 @@ User triggers "Orphan Image Cleanup" (ribbon icon or command palette)
 
 Key API: `app.metadataCache.resolvedLinks` is `Record<string, Record<string, number>>` — outer key is source note path, inner key is target file path, value is link count. Scan only runs on user trigger (zero background overhead).
 
-### Broken Image Repair Flow
+### Broken Image Repair Flow (integrated into Orphan Modal)
 
 ```
-User triggers "Repair broken image links in current note"
+User opens Orphan Modal -> clicks "Repair broken links" button
   -> BrokenLinkRepairer.repair(view)
      -> regex scan all ![](path) in current note
      -> for each: cleanPath (backslash, absolute prefix)
      -> check if cleaned path resolves to existing file
      -> if not: extract filename, search vault-wide via vault.getFiles()
      -> compute relative path, apply via view.dispatch()
+  -> modal automatically rescans -> orphan list refreshes
 ```
 
 Key details:
+- Repair is integrated into OrphanImageModal, not a standalone command
 - Only standard markdown image syntax `![alt](path)` is targeted
-- Backslash normalization and absolute path stripping happen first
+- After repair, the orphan list refreshes automatically
 - Vault-wide filename search prefers `.assets/` directories, then same-directory matches
-- All replacements applied via individual `view.dispatch()` calls (non-overlapping, cursor-safe)
 
 ### i18n
 
