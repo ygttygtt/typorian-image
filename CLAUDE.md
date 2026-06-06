@@ -4,4 +4,74 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Obsidian plugin project — no code has been written yet. Update this file once the project structure is established.
+Typorian Image — an Obsidian plugin that enforces standard Markdown image syntax with Typora-compatible `.assets` folder paths. Intercepts paste/drop events, saves images to `${notename}.assets/`, and inserts `![name](path)` instead of `![[name]]`.
+
+## Build Commands
+
+```bash
+npm install          # Install dependencies
+npm run build        # Production build (outputs main.js)
+npm run dev          # Watch mode for development
+```
+
+Type checking (no build output):
+```bash
+npx tsc --noEmit
+```
+
+## Architecture
+
+```
+main.ts                      Entry point: lifecycle + CM6 extension registration
+src/
+  constants.ts               MIME types, extension mappings
+  settings.ts                TyporianSettings interface + defaults
+  path-utils.ts              Asset folder path calculation, filename deduplication
+  image-handler.ts           Core pipeline: read -> save -> dispatch CM6 transaction
+  cm6-paste-plugin.ts        CM6 ViewPlugin: capture-phase paste/drop interception
+  setting-tab.ts             Settings UI + Typora alignment guide
+```
+
+### Data Flow
+
+```
+paste/drop event (capture phase)
+  -> cm6-paste-plugin.ts filters for images
+  -> image-handler.handleImage()
+     -> file.arrayBuffer()
+     -> PathUtils.getAssetFolderPath(noteFile)
+     -> vault.createBinary(path, data)
+     -> view.dispatch({ changes, selection })  // atomic CM6 transaction
+```
+
+### Key Design Decisions
+
+- **Capture phase**: DOM listeners use `capture: true` on `view.dom` to intercept before Obsidian's default handlers. Non-image events pass through untouched.
+- **Atomic dispatch**: `changes` and `selection` are set in a single `view.dispatch()` call. Never split into two dispatches — this causes cursor flicker.
+- **Empty update()**: The ViewPlugin's `update()` method is intentionally empty. This means zero overhead on regular typing and backspace.
+- **No monkey-patching**: All interception is done via standard DOM events and Obsidian's public API (`registerEditorExtension`).
+
+### Obsidian API
+
+- `app.vault.createBinary(path, data)` — save binary files
+- `app.vault.adapter.exists(path)` / `app.vault.adapter.mkdir(path)` — filesystem checks
+- `this.registerEditorExtension(ext)` — register CM6 extensions (auto-cleaned on unload)
+- `this.loadData()` / `this.saveData()` — persist settings
+
+### CM6 API
+
+- `ViewPlugin.fromClass(ViewClass)` — create ViewPlugin
+- `view.dispatch({ changes, selection, userEvent })` — atomic document mutation
+- `view.state.selection.main.head` — cursor position
+- `view.posAtCoords({ x, y })` — screen coords to document offset
+
+## Release Workflow
+
+Pushing a `v*` tag triggers `.github/workflows/release.yml`, which builds and publishes `main.js`, `manifest.json`, and `styles.css` as GitHub Release assets.
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+The Obsidian community plugins repo points to the release URL, not the git repo. `main.js` is in `.gitignore` and should not be committed.
