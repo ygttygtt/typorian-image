@@ -22,7 +22,7 @@ npx tsc --noEmit
 ## Architecture
 
 ```
-main.ts                      Entry point: lifecycle + CM6 extension registration
+main.ts                      Entry point: lifecycle + CM6 extension registration + orphan cleanup command
 src/
   constants.ts               MIME types, extension mappings
   settings.ts                TyporianSettings interface + defaults
@@ -30,6 +30,9 @@ src/
   image-handler.ts           Core pipeline: read -> save -> dispatch CM6 transaction
   cm6-paste-plugin.ts        CM6 ViewPlugin: capture-phase paste/drop interception
   setting-tab.ts             Settings UI + Typora alignment guide
+  orphan-types.ts            OrphanImageInfo interface, IMAGE_EXTENSIONS set
+  orphan-detector.ts         OrphanDetector: resolvedLinks-based orphan scan
+  orphan-modal.ts            OrphanImageModal: checklist UI, thumbnail preview, safe trash
 ```
 
 ### Data Flow
@@ -64,6 +67,22 @@ paste/drop event (capture phase)
 - `view.dispatch({ changes, selection, userEvent })` — atomic document mutation
 - `view.state.selection.main.head` — cursor position
 - `view.posAtCoords({ x, y })` — screen coords to document offset
+
+### Orphan Image Cleanup Flow
+
+```
+User triggers "Orphan Image Cleanup" (ribbon icon or command palette)
+  -> new OrphanImageModal(app).open()
+  -> OrphanDetector.scan()
+     -> vault.getFiles() -> filter .assets images
+     -> metadataCache.resolvedLinks -> build referenced set
+     -> difference -> OrphanImageInfo[]
+  -> Modal renders checklist with thumbnails
+  -> User selects images, clicks "Safe Cleanup"
+  -> vault.trash(file, false)  // Obsidian internal trash, not permanent delete
+```
+
+Key API: `app.metadataCache.resolvedLinks` is `Record<string, Record<string, number>>` — outer key is source note path, inner key is target file path, value is link count. Scan only runs on user trigger (zero background overhead).
 
 ## Release Workflow
 

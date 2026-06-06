@@ -4,6 +4,7 @@ import { ImageHandler } from './src/image-handler';
 import { createImagePastePlugin } from './src/cm6-paste-plugin';
 import { TyporianSettingTab } from './src/setting-tab';
 import { TyporianSettings, DEFAULT_SETTINGS } from './src/settings';
+import { OrphanImageModal } from './src/orphan-modal';
 
 export default class TyporianImagePlugin extends Plugin {
   settings!: TyporianSettings;
@@ -18,6 +19,20 @@ export default class TyporianImagePlugin extends Plugin {
     this.registerEditorExtension(this.cm6Extension);
 
     this.addSettingTab(new TyporianSettingTab(this.app, this));
+
+    // Orphan Image Cleanup: Ribbon icon
+    this.addRibbonIcon('trash-2', 'Orphan Image Cleanup', () => {
+      new OrphanImageModal(this.app).open();
+    });
+
+    // Orphan Image Cleanup: Command palette
+    this.addCommand({
+      id: 'orphan-image-cleanup',
+      name: 'Orphan Image Cleanup',
+      callback: () => {
+        new OrphanImageModal(this.app).open();
+      },
+    });
   }
 
   async onunload(): Promise<void> {

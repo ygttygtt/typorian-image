@@ -1,1 +1,85 @@
 /* Typorian Image Plugin Styles */
+
+/* Orphan Image Modal */
+.orphan-status {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 24px 0;
+}
+
+.orphan-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--background-modifier-border);
+  margin-bottom: 8px;
+}
+
+.orphan-select-all-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 0.9em;
+}
+
+.orphan-summary {
+  margin-left: auto;
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
+.orphan-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.orphan-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.orphan-checkbox {
+  flex-shrink: 0;
+}
+
+.orphan-thumbnail {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+  background: var(--background-secondary);
+}
+
+.orphan-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.orphan-path {
+  font-family: var(--font-monospace);
+  font-size: 0.9em;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.orphan-size {
+  font-size: 0.85em;
+  color: var(--text-faint);
+}
+
+.orphan-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--background-modifier-border);
+  margin-top: 8px;
+}

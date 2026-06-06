@@ -24,6 +24,7 @@ Wiki-link functionality for notes, blocks, and headings remains completely untou
 - Auto-renames on filename conflict (image.png -> image(1).png)
 - Zero overhead on regular typing (no performance impact)
 - Full Live Preview support (images render inline as expected)
+- Orphan image detection and safe cleanup (v1.1.0)
 
 ## Installation
 
@@ -79,7 +80,31 @@ This approach ensures:
 - Undo/redo works correctly
 - Regular typing and backspace are unaffected
 
-## Building from Source
+## Orphan Image Cleanup
+
+Over time, `.assets` folders may accumulate images that are no longer referenced by any note. This plugin provides a built-in health check tool to find and safely remove them.
+
+### How to Use
+
+1. Click the trash icon in the left sidebar (Ribbon), or
+2. Open the Command Palette and run "Orphan Image Cleanup"
+
+The modal will scan all `.assets` folders and display a checklist of unreferenced images with:
+
+- Thumbnail preview
+- File path
+- File size
+
+### Safety
+
+- No images are selected by default -- you must manually check each one
+- Use "Select All" for convenience, but the default is always unchecked
+- Clicking "Safe Cleanup" moves selected images to Obsidian's internal trash (`.trash` folder), not permanent deletion
+- You can restore trashed images from the Obsidian file explorer if needed
+
+### Detection Method
+
+The detector uses Obsidian's `metadataCache.resolvedLinks` index, which contains all resolved wiki-links and markdown links across the vault. This is an in-memory lookup -- no disk I/O, no regex parsing. Only images inside `.assets` folders are scanned.
 
 ```bash
 git clone https://github.com/ygttygtt/typorian-image.git
