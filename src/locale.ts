@@ -40,7 +40,41 @@ type LocaleKey =
   | 'orphan.repairAllFixed'
   | 'orphan.repairNone'
   | 'orphan.repairAllNone'
-  | 'orphan.repairNoActive';
+  | 'orphan.repairNoActive'
+  | 'settings.interceptImage.name'
+  | 'settings.interceptImage.desc'
+  | 'settings.wikiConversion.name'
+  | 'settings.wikiConversion.desc'
+  | 'settings.scanCodeBlocks.name'
+  | 'settings.scanCodeBlocks.desc'
+  | 'settings.showRestructure.name'
+  | 'settings.showRestructure.desc'
+  | 'settings.manualAttachmentFolder.name'
+  | 'settings.manualAttachmentFolder.desc'
+  | 'settings.icons'
+  | 'settings.icons.imageAudit'
+  | 'settings.icons.share'
+  | 'settings.icons.restructure'
+  | 'share.title'
+  | 'share.folderFormat'
+  | 'share.zipFormat'
+  | 'share.exportPath'
+  | 'share.exportPath.desc'
+  | 'share.creating'
+  | 'share.success'
+  | 'share.error'
+  | 'share.noActive'
+  | 'restructure.title'
+  | 'restructure.preview'
+  | 'restructure.apply'
+  | 'restructure.cancel'
+  | 'restructure.confirm'
+  | 'restructure.success'
+  | 'restructure.warning'
+  | 'restructure.scanning'
+  | 'orphan.wikiConverted'
+  | 'orphan.wikiNone'
+  | 'orphan.repairAllWikiConverted';
 
 const zh: Record<LocaleKey, string> = {
   'settings.namingStrategy.name': '图片命名策略',
@@ -91,6 +125,40 @@ const zh: Record<LocaleKey, string> = {
   'orphan.repairNone': '当前笔记中未发现失效图片链接。',
   'orphan.repairAllNone': '所有笔记中均未发现失效图片链接。',
   'orphan.repairNoActive': '请先打开一个笔记，再执行链接修复。',
+  'settings.interceptImage.name': '拦截图片粘贴路径',
+  'settings.interceptImage.desc': '开启后，粘贴或拖入的图片将保存到笔记同级的资源文件夹中。关闭时使用 Obsidian 默认行为。',
+  'settings.wikiConversion.name': '修复时转换 Wiki 链接',
+  'settings.wikiConversion.desc': '扫描时检测 ![[image.png]] 格式并转换为标准 Markdown 链接。',
+  'settings.scanCodeBlocks.name': '扫描代码块内的链接',
+  'settings.scanCodeBlocks.desc': '开启后，修复功能会扫描代码块中的链接。默认关闭以保护代码示例。',
+  'settings.showRestructure.name': '显示重构工具',
+  'settings.showRestructure.desc': '开启后，左侧栏将出现重构工具入口。',
+  'settings.manualAttachmentFolder.name': '手动指定附件目录',
+  'settings.manualAttachmentFolder.desc': '当 Obsidian 无法自动识别附件目录时，手动输入历史统一附件目录名称。留空则使用 Obsidian 设置。',
+  'settings.icons': '图标设置',
+  'settings.icons.imageAudit': '图片审计按钮图标',
+  'settings.icons.share': '分享按钮图标',
+  'settings.icons.restructure': '重构按钮图标',
+  'share.title': '一键分享',
+  'share.folderFormat': '文件夹格式',
+  'share.zipFormat': 'ZIP 压缩包',
+  'share.exportPath': '导出路径',
+  'share.exportPath.desc': '相对于 Vault 根目录的导出路径',
+  'share.creating': '正在导出...',
+  'share.success': '已导出至 {path}',
+  'share.error': '导出失败: {message}',
+  'share.noActive': '请先打开一个笔记',
+  'restructure.title': '附件重构',
+  'restructure.preview': '预览变更',
+  'restructure.apply': '应用重构',
+  'restructure.cancel': '取消',
+  'restructure.confirm': '请输入 confirm 以确认覆盖',
+  'restructure.success': '重构完成，文件已复制至 {path}',
+  'restructure.warning': '警告: 此操作将在 Vault 根目录创建 _Restructured_Vault/ 沙盒目录',
+  'restructure.scanning': '正在扫描 Vault...',
+  'orphan.wikiConverted': '已转换 {count} 处 Wiki 链接',
+  'orphan.wikiNone': '未发现 Wiki 图片链接',
+  'orphan.repairAllWikiConverted': '已扫描 {scanned} 篇笔记，转换 {count} 处 Wiki 链接',
 };
 
 const en: Record<LocaleKey, string> = {
@@ -143,6 +211,40 @@ const en: Record<LocaleKey, string> = {
   'orphan.repairNone': 'No broken image links found in current note.',
   'orphan.repairAllNone': 'No broken image links found across all notes.',
   'orphan.repairNoActive': 'Please open a note first to repair links.',
+  'settings.interceptImage.name': 'Intercept image paste path',
+  'settings.interceptImage.desc': 'When enabled, pasted/dropped images are saved to the note\'s sibling assets folder. When disabled, Obsidian\'s default behavior is used.',
+  'settings.wikiConversion.name': 'Convert Wiki links when repairing',
+  'settings.wikiConversion.desc': 'Detect ![[image.png]] format during scan and convert to standard Markdown links.',
+  'settings.scanCodeBlocks.name': 'Scan links inside code blocks',
+  'settings.scanCodeBlocks.desc': 'When enabled, repair scans links inside code blocks. Disabled by default to protect code examples.',
+  'settings.showRestructure.name': 'Show restructure tool',
+  'settings.showRestructure.desc': 'When enabled, the restructure tool appears in the ribbon.',
+  'settings.manualAttachmentFolder.name': 'Manual attachment folder',
+  'settings.manualAttachmentFolder.desc': 'Manually specify the attachment folder name when Obsidian cannot auto-detect it. Leave empty to use Obsidian\'s setting.',
+  'settings.icons': 'Icon Settings',
+  'settings.icons.imageAudit': 'Image Audit button icon',
+  'settings.icons.share': 'Share button icon',
+  'settings.icons.restructure': 'Restructure button icon',
+  'share.title': 'Quick Share',
+  'share.folderFormat': 'Folder format',
+  'share.zipFormat': 'ZIP archive',
+  'share.exportPath': 'Export path',
+  'share.exportPath.desc': 'Export path relative to vault root',
+  'share.creating': 'Exporting...',
+  'share.success': 'Exported to {path}',
+  'share.error': 'Export failed: {message}',
+  'share.noActive': 'Please open a note first',
+  'restructure.title': 'Restructure',
+  'restructure.preview': 'Preview changes',
+  'restructure.apply': 'Apply restructure',
+  'restructure.cancel': 'Cancel',
+  'restructure.confirm': 'Type confirm to proceed',
+  'restructure.success': 'Restructure complete, files copied to {path}',
+  'restructure.warning': 'Warning: This will create a _Restructured_Vault/ sandbox directory at vault root',
+  'restructure.scanning': 'Scanning vault...',
+  'orphan.wikiConverted': 'Converted {count} wiki link(s)',
+  'orphan.wikiNone': 'No wiki image links found',
+  'orphan.repairAllWikiConverted': 'Scanned {scanned} notes, converted {count} wiki link(s)',
 };
 
 let currentLocale: 'zh' | 'en' = 'en';
