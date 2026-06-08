@@ -16,9 +16,12 @@ export class OrphanImageModal extends Modal {
   private listContainer: HTMLDivElement | null = null;
   private headerContainer: HTMLDivElement | null = null;
 
-  constructor(app: App, private settings?: TyporianSettings, private onSave?: () => Promise<void>) {
+  private wikiToggle = false;
+
+  constructor(app: App, private settings?: TyporianSettings) {
     super(app);
     this.detector = new OrphanDetector(app);
+    this.wikiToggle = settings?.enableWikiLinkConversion ?? false;
     this.repairer = new BrokenLinkRepairer(app, settings);
   }
 
@@ -182,12 +185,11 @@ export class OrphanImageModal extends Modal {
       const wikiCheckbox = wikiLabel.createEl('input', { type: 'checkbox' });
       wikiCheckbox.checked = this.settings.enableWikiLinkConversion;
       wikiLabel.createSpan({ text: t('orphan.wikiToggle') });
-      wikiCheckbox.addEventListener('change', async () => {
-        if (this.settings) {
-          this.settings.enableWikiLinkConversion = wikiCheckbox.checked;
-          this.repairer = new BrokenLinkRepairer(this.app, this.settings);
-          if (this.onSave) await this.onSave();
-        }
+      wikiCheckbox.addEventListener('change', () => {
+        this.wikiToggle = wikiCheckbox.checked;
+        // Create a temporary settings copy with the toggle override
+        const tempSettings = { ...this.settings!, enableWikiLinkConversion: this.wikiToggle } as TyporianSettings;
+        this.repairer = new BrokenLinkRepairer(this.app, tempSettings);
       });
     }
 

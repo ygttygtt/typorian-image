@@ -31,14 +31,14 @@ export default class TyporianImagePlugin extends Plugin {
     this.ribbonIconEl = this.addRibbonIcon(
       this.settings.iconImageAudit || 'trash-2',
       t('orphan.title'),
-      () => { new OrphanImageModal(this.app, this.settings, () => this.saveSettings()).open(); }
+      () => { new OrphanImageModal(this.app, this.settings).open(); }
     );
 
     // Image Audit: Command palette
     this.addCommand({
       id: 'orphan-image-cleanup',
       name: t('orphan.title'),
-      callback: () => { new OrphanImageModal(this.app, this.settings, () => this.saveSettings()).open(); },
+      callback: () => { new OrphanImageModal(this.app, this.settings).open(); },
     });
 
     // Quick Share: Ribbon icon
