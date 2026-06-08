@@ -1,7 +1,7 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import type TyporianImagePlugin from '../main';
 import { t } from './locale';
-import { ICON_PRESETS } from './icon-utils';
+import { ICON_PRESETS, getIconSvg } from './icon-utils';
 import type { TyporianSettings } from './settings';
 
 export class TyporianSettingTab extends PluginSettingTab {
@@ -165,19 +165,26 @@ export class TyporianSettingTab extends PluginSettingTab {
 
     for (const { key, labelKey, category } of iconCategories) {
       const presets = ICON_PRESETS[category] || [];
-      new Setting(advancedContent)
-        .setName(t(labelKey as any))
-        .addDropdown((dropdown) => {
-          for (const icon of presets) {
-            dropdown.addOption(icon, icon);
-          }
-          dropdown.setValue((this.plugin.settings as any)[key] || presets[0]);
-          dropdown.onChange(async (value) => {
-            (this.plugin.settings as any)[key] = value;
-            await this.plugin.saveSettings();
-            this.plugin.refreshRibbonIcons();
-          });
+      const currentIcon = (this.plugin.settings as any)[key] || presets[0];
+      const setting = new Setting(advancedContent)
+        .setName(t(labelKey as any));
+
+      // Icon preview
+      const preview = setting.settingEl.createDiv({ cls: 'typorian-icon-preview' });
+      preview.innerHTML = getIconSvg(currentIcon);
+
+      setting.addDropdown((dropdown) => {
+        for (const icon of presets) {
+          dropdown.addOption(icon, icon);
+        }
+        dropdown.setValue(currentIcon);
+        dropdown.onChange(async (value) => {
+          (this.plugin.settings as any)[key] = value;
+          await this.plugin.saveSettings();
+          this.plugin.refreshRibbonIcons();
+          preview.innerHTML = getIconSvg(value);
         });
+      });
     }
 
     // --- Typora alignment guide ---

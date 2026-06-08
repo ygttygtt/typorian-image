@@ -179,16 +179,18 @@ export class OrphanImageModal extends Modal {
     });
     repairAllBtn.addEventListener('click', () => this.handleRepairAll());
 
-    // Wiki conversion toggle (synced with settings)
+    // Wiki conversion toggle (session-only, reads default from settings)
     if (this.settings) {
-      const wikiLabel = leftGroup.createEl('label', { cls: 'orphan-wiki-toggle' });
-      const wikiCheckbox = wikiLabel.createEl('input', { type: 'checkbox' });
-      wikiCheckbox.checked = this.settings.enableWikiLinkConversion;
-      wikiLabel.createSpan({ text: t('orphan.wikiToggle') });
-      wikiCheckbox.addEventListener('change', () => {
-        this.wikiToggle = wikiCheckbox.checked;
-        // Create a temporary settings copy with the toggle override
-        const tempSettings = { ...this.settings!, enableWikiLinkConversion: this.wikiToggle } as TyporianSettings;
+      const wikiToggleEl = leftGroup.createDiv({ cls: 'orphan-wiki-toggle' });
+      wikiToggleEl.createSpan({ text: t('orphan.wikiToggle'), cls: 'orphan-wiki-toggle-label' });
+      const track = wikiToggleEl.createDiv({
+        cls: `orphan-wiki-toggle-track${this.wikiToggle ? ' is-on' : ''}`,
+      });
+      track.createDiv({ cls: 'orphan-wiki-toggle-thumb' });
+      wikiToggleEl.addEventListener('click', () => {
+        this.wikiToggle = !this.wikiToggle;
+        track.classList.toggle('is-on', this.wikiToggle);
+        const tempSettings = { ...this.settings!, enableWikiLinkConversion: this.wikiToggle };
         this.repairer = new BrokenLinkRepairer(this.app, tempSettings);
       });
     }
