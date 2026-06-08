@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Typorian Image — an Obsidian plugin that enforces standard Markdown image syntax with Typora-compatible `.assets` folder paths. Intercepts paste/drop events, saves images to `${notename}.assets/`, and inserts `![name](path)` instead of `![[name]]`.
 
+**Current version**: v1.2.0 (released). v1.3.0 plan at `docs/superpowers/plans/2026-06-06-v1.3.0-core-refactor.md`.
+
+**Superpowers**: Before every task, check and invoke applicable skills (writing-plans, brainstorming, executing-plans, systematic-debugging). Process skills first, implementation skills second. See memory `superpowers-usage.md`.
+
 ## Build Commands
 
 ```bash
@@ -18,6 +22,8 @@ Type checking (no build output):
 ```bash
 npx tsc --noEmit
 ```
+
+**No test framework or linter is configured.** Verify changes by building and manually testing in Obsidian.
 
 ## Architecture
 
@@ -35,7 +41,12 @@ src/
   orphan-detector.ts         OrphanDetector: resolvedLinks-based orphan scan
   orphan-modal.ts            OrphanImageModal: checklist, thumbnails, locate button, safe trash
   broken-link-repairer.ts    BrokenLinkRepairer: regex + vault search + auto-fix
+styles.css                   All plugin CSS: settings tab advanced toggle + orphan modal layout
 ```
+
+### TypeScript
+
+`strictNullChecks` is enabled. Full `strict` mode is not — `noImplicitAny` is on but `strictFunctionTypes` / `strictPropertyInitialization` are off. When adding new code, use explicit types where TS cannot infer (avoid relying on `any`).
 
 ### Data Flow
 
@@ -105,6 +116,10 @@ Key details:
 - After repair, the orphan list refreshes automatically
 - Vault-wide filename search prefers `.assets/` directories, then same-directory matches
 
+### Electron Usage
+
+`orphan-modal.ts` uses `require('electron').shell.showItemInFolder()` to reveal files in the OS file explorer. This is a runtime require (not an import) since `electron` is external to the esbuild bundle. Falls back to `app.openWithDefaultApp()` if electron is unavailable.
+
 ### i18n
 
 Locale is detected from `window.localStorage.getItem('language')` or `navigator.language`. Chinese (`zh*`) maps to zh locale; everything else falls back to English. The `t(key, vars?)` function returns localized text with optional `{placeholder}` interpolation.
@@ -114,8 +129,9 @@ Locale is detected from `window.localStorage.getItem('language')` or `navigator.
 Pushing a `v*` tag triggers `.github/workflows/release.yml`, which builds and publishes `main.js`, `manifest.json`, and `styles.css` as GitHub Release assets.
 
 ```bash
+npm run version      # bumps version in package.json + manifest.json, generates CHANGELOG
 git tag v1.0.0
-git push origin v1.0.0
+git push origin v1.0.0 --follow-tags
 ```
 
 The Obsidian community plugins repo points to the release URL, not the git repo. `main.js` is in `.gitignore` and should not be committed.
