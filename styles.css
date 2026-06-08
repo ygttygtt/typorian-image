@@ -318,26 +318,24 @@
 /* Icon preview in settings — absolute positioned at far left of setting row */
 .typorian-icon-preview {
   position: absolute;
-  left: 8px;
+  left: 4px;
   top: 50%;
   transform: translateY(-50%);
-  width: 24px;
-  height: 24px;
   display: flex;
   align-items: center;
-  justify-content: center;
   color: var(--text-muted);
   z-index: 1;
 }
 
 .typorian-icon-preview svg {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
+  display: block;
 }
 
 /* Add left padding to setting-item-info to make room for icon preview */
 .setting-item:has(.typorian-icon-preview) .setting-item-info {
-  padding-left: 40px;
+  padding-left: 24px;
 }
 
 /* Icon dropdown — consistent width */
