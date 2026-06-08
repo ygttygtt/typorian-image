@@ -317,25 +317,17 @@
 
 /* Icon preview in settings — absolute positioned at far left of setting row */
 .typorian-icon-preview {
-  position: absolute;
-  left: 4px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  vertical-align: middle;
+  margin-right: 6px;
   color: var(--text-muted);
-  z-index: 1;
 }
 
 .typorian-icon-preview svg {
   width: 16px;
   height: 16px;
   display: block;
-}
-
-/* Add left padding to setting-item-info to make room for icon preview */
-.setting-item:has(.typorian-icon-preview) .setting-item-info {
-  padding-left: 24px;
 }
 
 /* Icon dropdown — consistent width */
