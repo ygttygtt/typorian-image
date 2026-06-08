@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Typorian Image — an Obsidian plugin that enforces standard Markdown image syntax with Typora-compatible `.assets` folder paths. Intercepts paste/drop events, saves images to `${notename}.assets/`, and inserts `![name](path)` instead of `![[name]]`.
 
-**Current version**: v1.3.0 (released).
+**Current version**: v1.3.1 (released).
 
 **Superpowers**: Before every task, check and invoke applicable skills (writing-plans, brainstorming, executing-plans, systematic-debugging). Process skills first, implementation skills second. See memory `superpowers-usage.md`.
 
@@ -31,12 +31,12 @@ npx tsc --noEmit
 main.ts                      Entry point: lifecycle + CM6 extension + ribbon icons + commands
 src/
   constants.ts               MIME types, extension mappings
-  settings.ts                TyporianSettings interface + defaults (11 fields)
-  locale.ts                  i18n: zh/en locale dictionary, t() function (~70 keys)
+  settings.ts                TyporianSettings interface + defaults (12 fields)
+  locale.ts                  i18n: zh/en locale dictionary, t() function (~80 keys)
   path-utils.ts              Asset folder path calculation (respects custom template)
   image-handler.ts           Core pipeline: read -> save -> dispatch CM6 transaction
   cm6-paste-plugin.ts        CM6 ViewPlugin: capture-phase paste/drop interception
-  setting-tab.ts             Settings UI (i18n) + collapsible advanced section + icon dropdowns
+  setting-tab.ts             Settings UI (i18n) + flat layout + icon dropdowns with preview
   orphan-types.ts            OrphanImageInfo interface, IMAGE_EXTENSIONS set
   orphan-detector.ts         OrphanDetector: resolvedLinks-based orphan scan
   orphan-modal.ts            OrphanImageModal: checklist, thumbnails, wiki toggle, safe trash
@@ -73,15 +73,17 @@ paste/drop event (capture phase)
 - **Empty update()**: The ViewPlugin's `update()` method is intentionally empty. This means zero overhead on regular typing and backspace.
 - **No monkey-patching**: All interception is done via standard DOM events and Obsidian's public API (`registerEditorExtension`).
 
-### v1.3.0 Features
+### v1.3.x Features
 
 - **Intercept toggle**: `interceptImagePath` setting gates paste/drop interception. When OFF, events pass through to Obsidian.
 - **Code block filter**: `extractCodeBlockRanges()` + `isInsideCodeBlock()` binary search. Repair skips links inside fenced/inline code unless `scanCodeBlocks` is on.
 - **Wiki link conversion**: `WIKI_EMBED_REGEX` matches `![[img]]` / `![[img|alt]]`. Resolution: `getFirstLinkpathDest` → manual folder → Obsidian attachment config.
-- **Wiki toggle in modal**: Checkbox in orphan modal footer, session-only override (reads default from settings, does not persist).
-- **One-click share**: `ShareManager` exports note + images as folder or ZIP (JSZip bundled).
-- **Vault restructure**: `RestructureManager` creates `_Restructured_Vault/` sandbox, copies + rewrites all notes. User confirms with typed "confirm".
-- **Icon customization**: 3 configurable Lucide icons (audit/share/restructure). `setIcon()` on ribbon element for live refresh.
+- **Wiki toggle in modal**: Inline toggle in orphan modal footer, session-only override (reads default from settings, does not persist).
+- **One-click share**: `ShareManager` exports note + images as folder or ZIP (JSZip bundled). Native folder picker via `electron.remote.dialog`. "Open folder after export" toggle.
+- **Vault restructure**: `RestructureManager` creates `_Restructured_Vault/` sandbox. Table-based preview with checkboxes, smart filtering (no-image notes flagged).
+- **Icon customization**: 3 configurable Lucide icons (audit/share/restructure). `setIcon()` on ribbon element for live refresh. Inline preview in settings dropdown.
+- **Flat settings**: All settings displayed flat (no accordion). "Current behavior" and "Typora guide" at bottom.
+- **Ribbon icons**: Always create all 3 icons, use `display: none` to hide restructure when disabled. Toggle in settings shows/hides instantly.
 
 ### Obsidian API
 
@@ -92,6 +94,8 @@ paste/drop event (capture phase)
 - `setIcon(element, iconName)` — set Lucide icon on DOM element
 - `app.metadataCache.getFirstLinkpathDest(link, source)` — resolve wiki link to TFile
 - `(app.vault as any).getConfig('attachmentFolderPath')` — read Obsidian's attachment folder setting
+- `require('electron').remote.dialog.showOpenDialog()` — native folder picker (share modal)
+- `require('electron').shell.openPath(path)` — open folder in OS file explorer
 
 ### CM6 API
 
