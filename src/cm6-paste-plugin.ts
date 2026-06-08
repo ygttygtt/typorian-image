@@ -36,6 +36,7 @@ export function createImagePastePlugin(
           imageHandler.isSupportedImage(f)
         );
         if (imageFiles.length === 0) return; // not images, pass through
+        if (!imageHandler.shouldIntercept()) return; // interception disabled
 
         evt.preventDefault();
         evt.stopImmediatePropagation();
@@ -53,6 +54,7 @@ export function createImagePastePlugin(
           imageHandler.isSupportedImage(f)
         );
         if (imageFiles.length === 0) return;
+        if (!imageHandler.shouldIntercept()) return;
 
         evt.preventDefault();
         evt.stopImmediatePropagation();

@@ -2,12 +2,9 @@ import { App, Modal, Notice, TFile, MarkdownView } from 'obsidian';
 import { OrphanDetector } from './orphan-detector';
 import { OrphanImageInfo } from './orphan-types';
 import { BrokenLinkRepairer } from './broken-link-repairer';
+import { TyporianSettings } from './settings';
+import { getIconSvg } from './icon-utils';
 import { t } from './locale';
-
-// SVG icons (Lucide)
-const ICON_FOLDER = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/></svg>`;
-const ICON_NOTE = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>`;
-const ICON_REFRESH = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>`;
 
 export class OrphanImageModal extends Modal {
   private detector: OrphanDetector;
@@ -19,10 +16,10 @@ export class OrphanImageModal extends Modal {
   private listContainer: HTMLDivElement | null = null;
   private headerContainer: HTMLDivElement | null = null;
 
-  constructor(app: App) {
+  constructor(app: App, private settings?: TyporianSettings) {
     super(app);
     this.detector = new OrphanDetector(app);
-    this.repairer = new BrokenLinkRepairer(app);
+    this.repairer = new BrokenLinkRepairer(app, settings);
   }
 
   async onOpen(): Promise<void> {
@@ -125,7 +122,7 @@ export class OrphanImageModal extends Modal {
           title: t('orphan.locateNote'),
         },
       });
-      locateNoteBtn.innerHTML = ICON_NOTE;
+      locateNoteBtn.innerHTML = getIconSvg('file-text');
       if (!relatedNote) {
         locateNoteBtn.disabled = true;
         locateNoteBtn.title = t('orphan.noteNotFound');
@@ -145,7 +142,7 @@ export class OrphanImageModal extends Modal {
           title: t('orphan.locateFolder'),
         },
       });
-      locateFolderBtn.innerHTML = ICON_FOLDER;
+      locateFolderBtn.innerHTML = getIconSvg('folder-open');
       locateFolderBtn.addEventListener('click', (evt) => {
         evt.stopPropagation();
         this.revealInExplorer(orphan.file);
@@ -183,7 +180,7 @@ export class OrphanImageModal extends Modal {
       cls: 'orphan-refresh-btn',
       attr: { 'aria-label': t('orphan.refresh'), title: t('orphan.refresh') },
     });
-    refreshBtn.innerHTML = ICON_REFRESH;
+    refreshBtn.innerHTML = getIconSvg('refresh-cw');
     refreshBtn.addEventListener('click', () => this.scanAndRender());
 
     // Right group: cancel + cleanup

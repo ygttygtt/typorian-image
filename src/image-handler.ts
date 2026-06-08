@@ -14,6 +14,10 @@ export class ImageHandler {
     this.settings = settings;
   }
 
+  shouldIntercept(): boolean {
+    return this.settings.interceptImagePath;
+  }
+
   /**
    * Check if a File is a supported image type.
    */
