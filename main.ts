@@ -27,7 +27,7 @@ export default class TyporianImagePlugin extends Plugin {
 
     this.addSettingTab(new TyporianSettingTab(this.app, this));
 
-    // Ribbon icons — add in display order (first added = top of sidebar)
+    // Ribbon icons — add in order: Audit, Share, Restructure
     this.ribbonAuditEl = this.addRibbonIcon(
       this.settings.iconImageAudit || 'trash-2',
       t('orphan.title'),
@@ -40,12 +40,15 @@ export default class TyporianImagePlugin extends Plugin {
       () => { new ShareModal(this.app, this.settings).open(); }
     );
 
-    if (this.settings.showRestructureTool) {
-      this.ribbonRestructureEl = this.addRibbonIcon(
-        this.settings.iconRestructure || 'git-fork',
-        t('restructure.title'),
-        () => { new RestructureModal(this.app, this.settings).open(); }
-      );
+    this.ribbonRestructureEl = this.addRibbonIcon(
+      this.settings.iconRestructure || 'git-fork',
+      t('restructure.title'),
+      () => { new RestructureModal(this.app, this.settings).open(); }
+    );
+
+    // Hide restructure ribbon if disabled (addRibbonIcon always adds, we control visibility)
+    if (!this.settings.showRestructureTool && this.ribbonRestructureEl) {
+      this.ribbonRestructureEl.style.display = 'none';
     }
 
     // Commands
@@ -99,6 +102,7 @@ export default class TyporianImagePlugin extends Plugin {
     }
     if (this.ribbonRestructureEl) {
       setIcon(this.ribbonRestructureEl, this.settings.iconRestructure || 'git-fork');
+      this.ribbonRestructureEl.style.display = this.settings.showRestructureTool ? '' : 'none';
     }
   }
 }

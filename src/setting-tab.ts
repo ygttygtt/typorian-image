@@ -139,14 +139,12 @@ export class TyporianSettingTab extends PluginSettingTab {
       const setting = new Setting(containerEl)
         .setName(t(labelKey as any));
 
-      // Icon preview — insert at the beginning of .setting-item-info (far left)
-      const infoEl = setting.settingEl.querySelector('.setting-item-info');
+      // Icon preview — insert as first child of .setting-item, absolute positioned left
       const preview = document.createElement('div');
       preview.className = 'typorian-icon-preview';
       preview.innerHTML = getIconSvg(currentIcon);
-      if (infoEl) {
-        infoEl.insertBefore(preview, infoEl.firstChild);
-      }
+      setting.settingEl.insertBefore(preview, setting.settingEl.firstChild);
+      setting.settingEl.style.position = 'relative';
 
       setting.addDropdown((dropdown) => {
         for (const icon of presets) {
