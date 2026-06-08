@@ -121,6 +121,7 @@ export class TyporianSettingTab extends PluginSettingTab {
           .onChange(async (value) => {
             this.plugin.settings.showRestructureTool = value;
             await this.plugin.saveSettings();
+            this.plugin.refreshRibbonIcons();
           })
       );
 

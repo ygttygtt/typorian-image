@@ -318,7 +318,7 @@
 /* Icon preview in settings — absolute positioned at far left of setting row */
 .typorian-icon-preview {
   position: absolute;
-  left: 0;
+  left: 8px;
   top: 50%;
   transform: translateY(-50%);
   width: 24px;
@@ -337,5 +337,12 @@
 
 /* Add left padding to setting-item-info to make room for icon preview */
 .setting-item:has(.typorian-icon-preview) .setting-item-info {
-  padding-left: 32px;
+  padding-left: 40px;
+}
+
+/* Icon dropdown — consistent width */
+.setting-item:has(.typorian-icon-preview) .setting-item-control select,
+.setting-item:has(.typorian-icon-preview) .dropdown {
+  min-width: 120px;
+  width: 120px;
 }
