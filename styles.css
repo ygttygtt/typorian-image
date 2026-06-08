@@ -246,3 +246,27 @@
   width: 120px;
   margin-right: 8px;
 }
+
+/* Wiki toggle in orphan modal footer */
+.orphan-wiki-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  font-size: 0.85em;
+  color: var(--text-muted);
+  padding: 4px 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  transition: color 0.1s ease, border-color 0.1s ease;
+}
+
+.orphan-wiki-toggle:hover {
+  color: var(--text-normal);
+  border-color: var(--text-muted);
+}
+
+.orphan-wiki-toggle input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+}

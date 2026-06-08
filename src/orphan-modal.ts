@@ -16,7 +16,7 @@ export class OrphanImageModal extends Modal {
   private listContainer: HTMLDivElement | null = null;
   private headerContainer: HTMLDivElement | null = null;
 
-  constructor(app: App, private settings?: TyporianSettings) {
+  constructor(app: App, private settings?: TyporianSettings, private onSave?: () => Promise<void>) {
     super(app);
     this.detector = new OrphanDetector(app);
     this.repairer = new BrokenLinkRepairer(app, settings);
@@ -175,6 +175,21 @@ export class OrphanImageModal extends Modal {
       cls: 'orphan-repair-btn',
     });
     repairAllBtn.addEventListener('click', () => this.handleRepairAll());
+
+    // Wiki conversion toggle (synced with settings)
+    if (this.settings) {
+      const wikiLabel = leftGroup.createEl('label', { cls: 'orphan-wiki-toggle' });
+      const wikiCheckbox = wikiLabel.createEl('input', { type: 'checkbox' });
+      wikiCheckbox.checked = this.settings.enableWikiLinkConversion;
+      wikiLabel.createSpan({ text: t('orphan.wikiToggle') });
+      wikiCheckbox.addEventListener('change', async () => {
+        if (this.settings) {
+          this.settings.enableWikiLinkConversion = wikiCheckbox.checked;
+          this.repairer = new BrokenLinkRepairer(this.app, this.settings);
+          if (this.onSave) await this.onSave();
+        }
+      });
+    }
 
     const refreshBtn = leftGroup.createEl('button', {
       cls: 'orphan-refresh-btn',
