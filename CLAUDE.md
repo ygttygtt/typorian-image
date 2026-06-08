@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Typorian Image — an Obsidian plugin that enforces standard Markdown image syntax with Typora-compatible `.assets` folder paths. Intercepts paste/drop events, saves images to `${notename}.assets/`, and inserts `![name](path)` instead of `![[name]]`.
 
-**Current version**: v1.2.0 (released). v1.3.0 plan at `docs/superpowers/plans/2026-06-06-v1.3.0-core-refactor.md`.
+**Current version**: v1.3.0 (released).
 
 **Superpowers**: Before every task, check and invoke applicable skills (writing-plans, brainstorming, executing-plans, systematic-debugging). Process skills first, implementation skills second. See memory `superpowers-usage.md`.
 
@@ -28,20 +28,26 @@ npx tsc --noEmit
 ## Architecture
 
 ```
-main.ts                      Entry point: lifecycle + CM6 extension + orphan + broken link repair
+main.ts                      Entry point: lifecycle + CM6 extension + ribbon icons + commands
 src/
   constants.ts               MIME types, extension mappings
-  settings.ts                TyporianSettings interface + defaults (incl. assetFolderPath)
-  locale.ts                  i18n: zh/en locale dictionary, t() function
+  settings.ts                TyporianSettings interface + defaults (11 fields)
+  locale.ts                  i18n: zh/en locale dictionary, t() function (~70 keys)
   path-utils.ts              Asset folder path calculation (respects custom template)
   image-handler.ts           Core pipeline: read -> save -> dispatch CM6 transaction
   cm6-paste-plugin.ts        CM6 ViewPlugin: capture-phase paste/drop interception
-  setting-tab.ts             Settings UI (i18n) + collapsible advanced section + Typora guide
+  setting-tab.ts             Settings UI (i18n) + collapsible advanced section + icon dropdowns
   orphan-types.ts            OrphanImageInfo interface, IMAGE_EXTENSIONS set
   orphan-detector.ts         OrphanDetector: resolvedLinks-based orphan scan
-  orphan-modal.ts            OrphanImageModal: checklist, thumbnails, locate button, safe trash
-  broken-link-repairer.ts    BrokenLinkRepairer: regex + vault search + auto-fix
-styles.css                   All plugin CSS: settings tab advanced toggle + orphan modal layout
+  orphan-modal.ts            OrphanImageModal: checklist, thumbnails, wiki toggle, safe trash
+  broken-link-repairer.ts    BrokenLinkRepairer: regex + code block filter + wiki conversion
+  code-block-filter.ts       Extract code block/inline code ranges, binary search
+  icon-utils.ts              Lucide icon resolution via setIcon(), ICON_PRESETS
+  share-manager.ts           One-click share: folder/ZIP export with JSZip
+  share-modal.ts             Share modal UI: format toggle, export path
+  restructure-manager.ts     Vault restructuring: sandbox _Restructured_Vault/, preview + apply
+  restructure-modal.ts       Restructure modal UI: file tree preview, confirm-to-apply
+styles.css                   All plugin CSS: settings, orphan modal, share, restructure
 ```
 
 ### TypeScript
@@ -67,12 +73,25 @@ paste/drop event (capture phase)
 - **Empty update()**: The ViewPlugin's `update()` method is intentionally empty. This means zero overhead on regular typing and backspace.
 - **No monkey-patching**: All interception is done via standard DOM events and Obsidian's public API (`registerEditorExtension`).
 
+### v1.3.0 Features
+
+- **Intercept toggle**: `interceptImagePath` setting gates paste/drop interception. When OFF, events pass through to Obsidian.
+- **Code block filter**: `extractCodeBlockRanges()` + `isInsideCodeBlock()` binary search. Repair skips links inside fenced/inline code unless `scanCodeBlocks` is on.
+- **Wiki link conversion**: `WIKI_EMBED_REGEX` matches `![[img]]` / `![[img|alt]]`. Resolution: `getFirstLinkpathDest` → manual folder → Obsidian attachment config.
+- **Wiki toggle in modal**: Checkbox in orphan modal footer, session-only override (reads default from settings, does not persist).
+- **One-click share**: `ShareManager` exports note + images as folder or ZIP (JSZip bundled).
+- **Vault restructure**: `RestructureManager` creates `_Restructured_Vault/` sandbox, copies + rewrites all notes. User confirms with typed "confirm".
+- **Icon customization**: 3 configurable Lucide icons (audit/share/restructure). `setIcon()` on ribbon element for live refresh.
+
 ### Obsidian API
 
 - `app.vault.createBinary(path, data)` — save binary files
 - `app.vault.adapter.exists(path)` / `app.vault.adapter.mkdir(path)` — filesystem checks
 - `this.registerEditorExtension(ext)` — register CM6 extensions (auto-cleaned on unload)
 - `this.loadData()` / `this.saveData()` — persist settings
+- `setIcon(element, iconName)` — set Lucide icon on DOM element
+- `app.metadataCache.getFirstLinkpathDest(link, source)` — resolve wiki link to TFile
+- `(app.vault as any).getConfig('attachmentFolderPath')` — read Obsidian's attachment folder setting
 
 ### CM6 API
 
@@ -129,9 +148,11 @@ Locale is detected from `window.localStorage.getItem('language')` or `navigator.
 Pushing a `v*` tag triggers `.github/workflows/release.yml`, which builds and publishes `main.js`, `manifest.json`, and `styles.css` as GitHub Release assets.
 
 ```bash
-npm run version      # bumps version in package.json + manifest.json, generates CHANGELOG
-git tag v1.0.0
-git push origin v1.0.0 --follow-tags
+git checkout main
+git merge feat/branch --no-ff -m "Merge: description"
+git tag vX.Y.Z
+git push origin main --tags
+gh release create vX.Y.Z --generate-notes main.js manifest.json styles.css
 ```
 
-The Obsidian community plugins repo points to the release URL, not the git repo. `main.js` is in `.gitignore` and should not be committed.
+Sole developer — no PR workflow needed. Merge directly to main, tag, push, create release.
