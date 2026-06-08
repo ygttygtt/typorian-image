@@ -75,7 +75,15 @@ type LocaleKey =
   | 'restructure.scanning'
   | 'orphan.wikiConverted'
   | 'orphan.wikiNone'
-  | 'orphan.repairAllWikiConverted';
+  | 'orphan.repairAllWikiConverted'
+  | 'share.openFolder'
+  | 'share.openFolder.desc'
+  | 'share.selectFolder'
+  | 'restructure.noImages'
+  | 'restructure.selected'
+  | 'restructure.table.note'
+  | 'restructure.table.assets'
+  | 'restructure.table.images';
 
 const zh: Record<LocaleKey, string> = {
   'settings.namingStrategy.name': '图片命名策略',
@@ -161,6 +169,14 @@ const zh: Record<LocaleKey, string> = {
   'orphan.wikiConverted': '已转换 {count} 处 Wiki 链接',
   'orphan.wikiNone': '未发现 Wiki 图片链接',
   'orphan.repairAllWikiConverted': '已扫描 {scanned} 篇笔记，转换 {count} 处 Wiki 链接',
+  'share.openFolder': '导出后打开文件夹',
+  'share.openFolder.desc': '导出完成后自动打开目标文件夹',
+  'share.selectFolder': '选择导出路径',
+  'restructure.noImages': '无图片引用，不生成 assets 文件夹',
+  'restructure.selected': '已选择 {count} 篇文档',
+  'restructure.table.note': '文档',
+  'restructure.table.assets': '目标路径',
+  'restructure.table.images': '图片数',
 };
 
 const en: Record<LocaleKey, string> = {
@@ -248,6 +264,14 @@ const en: Record<LocaleKey, string> = {
   'orphan.wikiConverted': 'Converted {count} wiki link(s)',
   'orphan.wikiNone': 'No wiki image links found',
   'orphan.repairAllWikiConverted': 'Scanned {scanned} notes, converted {count} wiki link(s)',
+  'share.openFolder': 'Open folder after export',
+  'share.openFolder.desc': 'Automatically open the target folder after export',
+  'share.selectFolder': 'Select export path',
+  'restructure.noImages': 'No image references, assets folder will not be created',
+  'restructure.selected': 'Selected {count} note(s)',
+  'restructure.table.note': 'Note',
+  'restructure.table.assets': 'Target Path',
+  'restructure.table.images': 'Images',
 };
 
 let currentLocale: 'zh' | 'en' = 'en';

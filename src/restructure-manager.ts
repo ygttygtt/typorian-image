@@ -7,10 +7,12 @@ export interface RestructureEntry {
   sourcePath: string;
   targetPath: string;
   type: 'note' | 'image';
+  imageCount?: number;
 }
 
 export interface RestructurePlan {
   entries: RestructureEntry[];
+  noteEntries: RestructureEntry[];
   totalNotes: number;
   totalImages: number;
 }
@@ -28,6 +30,7 @@ export class RestructureManager {
    */
   async preview(): Promise<RestructurePlan> {
     const entries: RestructureEntry[] = [];
+    const noteEntries: RestructureEntry[] = [];
     const mdFiles = this.app.vault.getMarkdownFiles();
     const processedImages = new Set<string>();
 
@@ -35,29 +38,42 @@ export class RestructureManager {
       const noteDir = mdFile.parent?.path ?? '';
       const targetNoteDir = noteDir ? `${this.sandboxDir}/${noteDir}` : this.sandboxDir;
 
-      entries.push({
-        sourcePath: mdFile.path,
-        targetPath: `${targetNoteDir}/${mdFile.name}`,
-        type: 'note',
-      });
-
-      // Find referenced images
       const content = await this.app.vault.read(mdFile);
       let match: RegExpExecArray | null;
       MD_IMAGE_REGEX.lastIndex = 0;
+
+      let imageCount = 0;
+      const noteImagePaths: string[] = [];
 
       while ((match = MD_IMAGE_REGEX.exec(content)) !== null) {
         const rawPath = match[2];
         if (rawPath.startsWith('http://') || rawPath.startsWith('https://')) continue;
 
         const resolvedPath = this.resolveImagePath(noteDir, rawPath);
-        if (!resolvedPath || processedImages.has(resolvedPath)) continue;
+        if (!resolvedPath) continue;
 
-        const sourceFile = this.app.vault.getAbstractFileByPath(normalizePath(resolvedPath));
+        if (!processedImages.has(resolvedPath)) {
+          const sourceFile = this.app.vault.getAbstractFileByPath(normalizePath(resolvedPath));
+          if (sourceFile instanceof TFile) {
+            processedImages.add(resolvedPath);
+            noteImagePaths.push(sourceFile.path);
+          }
+        }
+        imageCount++;
+      }
+
+      const noteEntry: RestructureEntry = {
+        sourcePath: mdFile.path,
+        targetPath: `${targetNoteDir}/${mdFile.name}`,
+        type: 'note',
+        imageCount,
+      };
+      entries.push(noteEntry);
+      noteEntries.push(noteEntry);
+
+      for (const imgPath of noteImagePaths) {
+        const sourceFile = this.app.vault.getAbstractFileByPath(imgPath);
         if (!(sourceFile instanceof TFile)) continue;
-
-        processedImages.add(resolvedPath);
-
         const targetAssetsDir = `${targetNoteDir}/${mdFile.basename}.assets`;
         entries.push({
           sourcePath: sourceFile.path,
@@ -67,20 +83,19 @@ export class RestructureManager {
       }
     }
 
-    return {
-      entries,
-      totalNotes: mdFiles.length,
-      totalImages: processedImages.size,
-    };
+    return { entries, noteEntries, totalNotes: mdFiles.length, totalImages: processedImages.size };
   }
 
   /**
-   * Apply: copy all files to sandbox and rewrite paths.
+   * Apply: copy selected notes and their images to sandbox.
    */
-  async apply(plan: RestructurePlan): Promise<void> {
+  async apply(plan: RestructurePlan, selectedPaths: Set<string>): Promise<void> {
     await this.ensureDir(this.sandboxDir);
 
-    const noteEntries = plan.entries.filter((e) => e.type === 'note');
+    const noteEntries = plan.entries.filter(
+      (e) => e.type === 'note' && selectedPaths.has(e.sourcePath)
+    );
+
     for (const entry of noteEntries) {
       const sourceFile = this.app.vault.getAbstractFileByPath(entry.sourcePath);
       if (!(sourceFile instanceof TFile)) continue;
@@ -89,7 +104,6 @@ export class RestructureManager {
       const noteDir = sourceFile.parent?.path ?? '';
       const targetNoteDir = noteDir ? `${this.sandboxDir}/${noteDir}` : this.sandboxDir;
 
-      // Rewrite image paths
       let newContent = content;
       const replacements: Array<{ from: number; to: number; insert: string }> = [];
       let match: RegExpExecArray | null;
@@ -115,18 +129,18 @@ export class RestructureManager {
 
       await this.ensureDir(targetNoteDir);
       await this.app.vault.create(normalizePath(entry.targetPath), newContent);
-    }
 
-    // Copy image files
-    const imageEntries = plan.entries.filter((e) => e.type === 'image');
-    for (const entry of imageEntries) {
-      const sourceFile = this.app.vault.getAbstractFileByPath(entry.sourcePath);
-      if (!(sourceFile instanceof TFile)) continue;
-
-      const data = await this.app.vault.readBinary(sourceFile);
-      const targetDir = entry.targetPath.substring(0, entry.targetPath.lastIndexOf('/'));
-      await this.ensureDir(targetDir);
-      await this.app.vault.createBinary(normalizePath(entry.targetPath), data);
+      // Copy images for this note
+      for (const imgEntry of plan.entries.filter(
+        (e) => e.type === 'image' && e.targetPath.startsWith(targetNoteDir + '/')
+      )) {
+        const imgFile = this.app.vault.getAbstractFileByPath(imgEntry.sourcePath);
+        if (!(imgFile instanceof TFile)) continue;
+        const data = await this.app.vault.readBinary(imgFile);
+        const imgTargetDir = imgEntry.targetPath.substring(0, imgEntry.targetPath.lastIndexOf('/'));
+        await this.ensureDir(imgTargetDir);
+        await this.app.vault.createBinary(normalizePath(imgEntry.targetPath), data);
+      }
     }
   }
 

@@ -13,12 +13,12 @@ export default class TyporianImagePlugin extends Plugin {
   settings!: TyporianSettings;
   private imageHandler!: ImageHandler;
   private cm6Extension!: ViewPlugin<any>;
-  private ribbonIconEl!: HTMLElement;
+  private ribbonAuditEl!: HTMLElement;
+  private ribbonShareEl!: HTMLElement;
+  private ribbonRestructureEl!: HTMLElement;
 
   async onload(): Promise<void> {
     await this.loadSettings();
-
-    // Initialize i18n
     initLocale(window.localStorage.getItem('language') || navigator.language);
 
     this.imageHandler = new ImageHandler(this.app, this.settings);
@@ -27,44 +27,40 @@ export default class TyporianImagePlugin extends Plugin {
 
     this.addSettingTab(new TyporianSettingTab(this.app, this));
 
-    // Image Audit: Ribbon icon
-    this.ribbonIconEl = this.addRibbonIcon(
-      this.settings.iconImageAudit || 'trash-2',
-      t('orphan.title'),
-      () => { new OrphanImageModal(this.app, this.settings).open(); }
-    );
-
-    // Image Audit: Command palette
-    this.addCommand({
-      id: 'orphan-image-cleanup',
-      name: t('orphan.title'),
-      callback: () => { new OrphanImageModal(this.app, this.settings).open(); },
-    });
-
-    // Quick Share: Ribbon icon
-    this.addRibbonIcon(
-      this.settings.iconShare || 'share-2',
-      t('share.title'),
-      () => { new ShareModal(this.app, this.settings).open(); }
-    );
-
-    // Quick Share: Command palette
-    this.addCommand({
-      id: 'share-note',
-      name: t('share.title'),
-      callback: () => { new ShareModal(this.app, this.settings).open(); },
-    });
-
-    // Restructure: Ribbon icon (only if enabled)
+    // Ribbon icons — first added = bottom of sidebar
     if (this.settings.showRestructureTool) {
-      this.addRibbonIcon(
+      this.ribbonRestructureEl = this.addRibbonIcon(
         this.settings.iconRestructure || 'git-fork',
         t('restructure.title'),
         () => { new RestructureModal(this.app, this.settings).open(); }
       );
     }
 
-    // Restructure: Command palette (always registered, checkCallback gates visibility)
+    this.ribbonShareEl = this.addRibbonIcon(
+      this.settings.iconShare || 'share-2',
+      t('share.title'),
+      () => { new ShareModal(this.app, this.settings).open(); }
+    );
+
+    this.ribbonAuditEl = this.addRibbonIcon(
+      this.settings.iconImageAudit || 'trash-2',
+      t('orphan.title'),
+      () => { new OrphanImageModal(this.app, this.settings).open(); }
+    );
+
+    // Commands
+    this.addCommand({
+      id: 'orphan-image-cleanup',
+      name: t('orphan.title'),
+      callback: () => { new OrphanImageModal(this.app, this.settings).open(); },
+    });
+
+    this.addCommand({
+      id: 'share-note',
+      name: t('share.title'),
+      callback: () => { new ShareModal(this.app, this.settings).open(); },
+    });
+
     this.addCommand({
       id: 'restructure-vault',
       name: t('restructure.title'),
@@ -95,8 +91,14 @@ export default class TyporianImagePlugin extends Plugin {
   }
 
   refreshRibbonIcons(): void {
-    if (this.ribbonIconEl) {
-      setIcon(this.ribbonIconEl, this.settings.iconImageAudit || 'trash-2');
+    if (this.ribbonAuditEl) {
+      setIcon(this.ribbonAuditEl, this.settings.iconImageAudit || 'trash-2');
+    }
+    if (this.ribbonShareEl) {
+      setIcon(this.ribbonShareEl, this.settings.iconShare || 'share-2');
+    }
+    if (this.ribbonRestructureEl) {
+      setIcon(this.ribbonRestructureEl, this.settings.iconRestructure || 'git-fork');
     }
   }
 }

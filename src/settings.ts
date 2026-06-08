@@ -10,6 +10,7 @@ export interface TyporianSettings {
   iconImageAudit: string;
   iconShare: string;
   iconRestructure: string;
+  openFolderAfterExport: boolean;
 }
 
 export const DEFAULT_SETTINGS: TyporianSettings = {
@@ -24,4 +25,5 @@ export const DEFAULT_SETTINGS: TyporianSettings = {
   iconImageAudit: 'trash-2',
   iconShare: 'share-2',
   iconRestructure: 'git-fork',
+  openFolderAfterExport: false,
 };

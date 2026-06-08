@@ -1,23 +1,5 @@
 /* Typorian Image Plugin Styles */
 
-/* Settings Tab - Advanced section */
-.typorian-advanced-header {
-  cursor: pointer;
-  user-select: none;
-}
-
-.typorian-advanced-header::before {
-  content: '\25B6';
-  display: inline-block;
-  margin-right: 6px;
-  font-size: 0.7em;
-  transition: transform 0.15s ease;
-}
-
-.typorian-advanced-header.is-open::before {
-  transform: rotate(90deg);
-}
-
 /* Orphan Image Modal */
 .orphan-status {
   text-align: center;
@@ -216,55 +198,88 @@
   border-radius: 2px;
 }
 
-.restructure-summary {
-  color: var(--text-muted);
-  font-size: 0.9em;
-}
-
-.restructure-entry {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 0;
-  font-family: var(--font-monospace);
-  font-size: 0.85em;
-}
-
-.restructure-source {
-  color: var(--text-muted);
-}
-
-.restructure-arrow {
-  color: var(--text-faint);
-}
-
-.restructure-target {
-  color: var(--text-success);
-}
-
 .restructure-confirm-input {
   width: 120px;
   margin-right: 8px;
 }
 
-/* Wiki toggle in orphan modal footer */
+/* Restructure Table */
+.restructure-table-container {
+  max-height: 400px;
+  overflow-y: auto;
+  margin: 8px 0;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+}
+
+.restructure-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+
+.restructure-table th {
+  position: sticky;
+  top: 0;
+  background: var(--background-secondary);
+  text-align: left;
+  padding: 6px 10px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.restructure-table td {
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  vertical-align: middle;
+}
+
+.restructure-th-check,
+.restructure-td-check {
+  width: 32px;
+  text-align: center;
+}
+
+.restructure-th-images,
+.restructure-td-images {
+  width: 80px;
+  text-align: center;
+}
+
+.restructure-td-note {
+  font-weight: 500;
+}
+
+.restructure-td-assets {
+  font-family: var(--font-monospace);
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
+.restructure-row-empty {
+  opacity: 0.5;
+}
+
+.restructure-no-images {
+  font-size: 0.8em;
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+/* Wiki toggle in orphan modal footer — inline, no button wrapper */
 .orphan-wiki-toggle {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   cursor: pointer;
   font-size: 0.85em;
   color: var(--text-muted);
-  padding: 4px 10px;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 4px;
-  transition: color 0.1s ease, border-color 0.1s ease;
   user-select: none;
+  transition: color 0.1s ease;
 }
 
 .orphan-wiki-toggle:hover {
   color: var(--text-normal);
-  border-color: var(--text-muted);
 }
 
 .orphan-wiki-toggle-label {
@@ -300,19 +315,19 @@
   transform: translateX(12px);
 }
 
-/* Icon preview in settings */
+/* Icon preview in settings — positioned at far left of setting row */
 .typorian-icon-preview {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
-  margin-right: 8px;
+  width: 24px;
+  height: 24px;
+  margin-right: 12px;
   color: var(--text-muted);
   flex-shrink: 0;
 }
 
 .typorian-icon-preview svg {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
 }

@@ -57,38 +57,8 @@ export class TyporianSettingTab extends PluginSettingTab {
           })
       );
 
-    // --- Current behavior info ---
-    containerEl.createEl('h3', { text: t('settings.currentBehavior') });
-    const infoEl = containerEl.createEl('div', {
-      cls: 'setting-item-description',
-    });
-    infoEl.createEl('p', { text: t('settings.currentBehavior.desc1') });
-    infoEl.createEl('p', {
-      text: `${t('settings.currentBehavior.desc2')}  ${this.plugin.settings.assetFolderPath}`,
-    });
-    infoEl.createEl('p', {
-      text: `${t('settings.currentBehavior.desc3')}  ![image](${this.plugin.settings.assetFolderPath.replace('${notename}', 'MyNote')}image.png)`,
-    });
-
-    // --- Advanced (collapsible) ---
-    const advancedHeader = containerEl.createEl('h3', {
-      text: t('settings.advanced'),
-      cls: 'typorian-advanced-header',
-    });
-    const advancedContent = containerEl.createDiv({
-      cls: 'typorian-advanced-content',
-    });
-    advancedContent.style.display = 'none';
-    advancedContent.style.overflow = 'hidden';
-
-    advancedHeader.addEventListener('click', () => {
-      const isOpen = advancedContent.style.display !== 'none';
-      advancedContent.style.display = isOpen ? 'none' : 'block';
-      advancedHeader.classList.toggle('is-open', !isOpen);
-    });
-
-    // --- Asset folder path (inside advanced) ---
-    new Setting(advancedContent)
+    // --- Asset folder path ---
+    new Setting(containerEl)
       .setName(t('settings.assetPath.name'))
       .setDesc(t('settings.assetPath.desc'))
       .addText((text) =>
@@ -101,8 +71,8 @@ export class TyporianSettingTab extends PluginSettingTab {
           })
       );
 
-    // --- Wiki link conversion toggle (inside advanced) ---
-    new Setting(advancedContent)
+    // --- Wiki link conversion toggle ---
+    new Setting(containerEl)
       .setName(t('settings.wikiConversion.name'))
       .setDesc(t('settings.wikiConversion.desc'))
       .addToggle((toggle) =>
@@ -114,8 +84,8 @@ export class TyporianSettingTab extends PluginSettingTab {
           })
       );
 
-    // --- Scan code blocks toggle (inside advanced) ---
-    new Setting(advancedContent)
+    // --- Scan code blocks toggle ---
+    new Setting(containerEl)
       .setName(t('settings.scanCodeBlocks.name'))
       .setDesc(t('settings.scanCodeBlocks.desc'))
       .addToggle((toggle) =>
@@ -127,8 +97,8 @@ export class TyporianSettingTab extends PluginSettingTab {
           })
       );
 
-    // --- Manual attachment folder (inside advanced) ---
-    new Setting(advancedContent)
+    // --- Manual attachment folder ---
+    new Setting(containerEl)
       .setName(t('settings.manualAttachmentFolder.name'))
       .setDesc(t('settings.manualAttachmentFolder.desc'))
       .addText((text) =>
@@ -141,8 +111,8 @@ export class TyporianSettingTab extends PluginSettingTab {
           })
       );
 
-    // --- Show restructure tool toggle (inside advanced) ---
-    new Setting(advancedContent)
+    // --- Show restructure tool toggle ---
+    new Setting(containerEl)
       .setName(t('settings.showRestructure.name'))
       .setDesc(t('settings.showRestructure.desc'))
       .addToggle((toggle) =>
@@ -154,8 +124,8 @@ export class TyporianSettingTab extends PluginSettingTab {
           })
       );
 
-    // --- Icon settings (inside advanced) ---
-    advancedContent.createEl('h4', { text: t('settings.icons') });
+    // --- Icon settings ---
+    containerEl.createEl('h3', { text: t('settings.icons') });
 
     const iconCategories: Array<{ key: keyof TyporianSettings; labelKey: string; category: string }> = [
       { key: 'iconImageAudit', labelKey: 'settings.icons.imageAudit', category: 'Image Audit' },
@@ -166,7 +136,7 @@ export class TyporianSettingTab extends PluginSettingTab {
     for (const { key, labelKey, category } of iconCategories) {
       const presets = ICON_PRESETS[category] || [];
       const currentIcon = (this.plugin.settings as any)[key] || presets[0];
-      const setting = new Setting(advancedContent)
+      const setting = new Setting(containerEl)
         .setName(t(labelKey as any));
 
       // Icon preview
@@ -187,13 +157,25 @@ export class TyporianSettingTab extends PluginSettingTab {
       });
     }
 
+    // --- Current behavior info (bottom) ---
+    containerEl.createEl('h3', { text: t('settings.currentBehavior') });
+    const infoEl = containerEl.createEl('div', {
+      cls: 'setting-item-description',
+    });
+    infoEl.createEl('p', { text: t('settings.currentBehavior.desc1') });
+    infoEl.createEl('p', {
+      text: `${t('settings.currentBehavior.desc2')}  ${this.plugin.settings.assetFolderPath}`,
+    });
+    infoEl.createEl('p', {
+      text: `${t('settings.currentBehavior.desc3')}  ![image](${this.plugin.settings.assetFolderPath.replace('${notename}', 'MyNote')}image.png)`,
+    });
+
     // --- Typora alignment guide ---
     containerEl.createEl('h3', { text: t('settings.typoraGuide') });
     const guideEl = containerEl.createEl('div', {
       cls: 'setting-item-description',
     });
     guideEl.createEl('p', { text: t('settings.typoraGuide.intro') });
-
     const steps = guideEl.createEl('ol');
     steps.createEl('li', { text: t('settings.typoraGuide.step1') });
     steps.createEl('li', { text: t('settings.typoraGuide.step2') });
@@ -201,7 +183,6 @@ export class TyporianSettingTab extends PluginSettingTab {
       text: `${t('settings.typoraGuide.step3')}  ./${'${filename}'}.assets/`,
     });
     steps.createEl('li', { text: t('settings.typoraGuide.step4') });
-
     guideEl.createEl('p', { text: t('settings.typoraGuide.note') });
   }
 }
