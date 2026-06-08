@@ -41,6 +41,7 @@ type LocaleKey =
   | 'orphan.repairNone'
   | 'orphan.repairAllNone'
   | 'orphan.repairNoActive'
+  | 'orphan.wikiToggle'
   | 'settings.interceptImage.name'
   | 'settings.interceptImage.desc'
   | 'settings.wikiConversion.name'
@@ -125,6 +126,7 @@ const zh: Record<LocaleKey, string> = {
   'orphan.repairNone': '当前笔记中未发现失效图片链接。',
   'orphan.repairAllNone': '所有笔记中均未发现失效图片链接。',
   'orphan.repairNoActive': '请先打开一个笔记，再执行链接修复。',
+  'orphan.wikiToggle': '修复Wiki',
   'settings.interceptImage.name': '拦截图片粘贴路径',
   'settings.interceptImage.desc': '开启后，粘贴或拖入的图片将保存到笔记同级的资源文件夹中。关闭时使用 Obsidian 默认行为。',
   'settings.wikiConversion.name': '修复时转换 Wiki 链接',
@@ -211,6 +213,7 @@ const en: Record<LocaleKey, string> = {
   'orphan.repairNone': 'No broken image links found in current note.',
   'orphan.repairAllNone': 'No broken image links found across all notes.',
   'orphan.repairNoActive': 'Please open a note first to repair links.',
+  'orphan.wikiToggle': 'Repair Wiki',
   'settings.interceptImage.name': 'Intercept image paste path',
   'settings.interceptImage.desc': 'When enabled, pasted/dropped images are saved to the note\'s sibling assets folder. When disabled, Obsidian\'s default behavior is used.',
   'settings.wikiConversion.name': 'Convert Wiki links when repairing',
