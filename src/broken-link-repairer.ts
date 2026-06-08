@@ -1,9 +1,14 @@
 import { App, TFile, Notice, normalizePath } from 'obsidian';
 import { EditorView } from '@codemirror/view';
 import { IMAGE_EXTENSIONS } from './orphan-types';
+import { extractCodeBlockRanges, isInsideCodeBlock, Range } from './code-block-filter';
+import { TyporianSettings } from './settings';
 
 // Matches standard markdown image: ![alt](path)
 const MD_IMAGE_REGEX = /!\[([^\]]*)\]\(([^)]+)\)/g;
+
+// Matches wiki embed: ![[path]] or ![[path|alias]]
+const WIKI_EMBED_REGEX = /!\[\[([^\]|]+?)(?:\|([^\]]*?))?\]\]/g;
 
 interface BrokenMatch {
   from: number;
@@ -12,6 +17,7 @@ interface BrokenMatch {
   rawPath: string;
   cleanedPath: string;
   fileName: string;
+  isWiki: boolean;
 }
 
 export interface RepairAllResult {
@@ -20,7 +26,10 @@ export interface RepairAllResult {
 }
 
 export class BrokenLinkRepairer {
-  constructor(private app: App) {}
+  constructor(
+    private app: App,
+    private settings?: TyporianSettings
+  ) {}
 
   /**
    * Repair broken image links in the active note (via EditorView).
@@ -33,7 +42,7 @@ export class BrokenLinkRepairer {
     const content = view.state.doc.toString();
     const noteDir = activeFile.parent?.path ?? '';
 
-    const broken = this.findBrokenLinks(content, noteDir);
+    const broken = this.findBrokenLinks(content, noteDir, activeFile.path);
     if (broken.length === 0) return 0;
 
     const vaultImages = this.buildVaultImageIndex();
@@ -65,7 +74,7 @@ export class BrokenLinkRepairer {
       const content = await this.app.vault.read(mdFile);
       const noteDir = mdFile.parent?.path ?? '';
 
-      const broken = this.findBrokenLinks(content, noteDir);
+      const broken = this.findBrokenLinks(content, noteDir, mdFile.path);
       if (broken.length === 0) {
         scanned++;
         continue;
@@ -95,12 +104,16 @@ export class BrokenLinkRepairer {
   /**
    * Find all broken image links in content relative to noteDir.
    */
-  private findBrokenLinks(content: string, noteDir: string): BrokenMatch[] {
+  private findBrokenLinks(content: string, noteDir: string, sourcePath: string): BrokenMatch[] {
     const broken: BrokenMatch[] = [];
     let match: RegExpExecArray | null;
 
+    const codeRanges = (!this.settings || this.settings.scanCodeBlocks) ? [] : extractCodeBlockRanges(content);
+
     MD_IMAGE_REGEX.lastIndex = 0;
     while ((match = MD_IMAGE_REGEX.exec(content)) !== null) {
+      if (codeRanges.length > 0 && isInsideCodeBlock(match.index, codeRanges)) continue;
+
       const rawPath = match[2];
 
       if (rawPath.startsWith('http://') || rawPath.startsWith('https://')) continue;
@@ -122,10 +135,87 @@ export class BrokenLinkRepairer {
         rawPath,
         cleanedPath,
         fileName,
+        isWiki: false,
       });
     }
 
+    if (this.settings?.enableWikiLinkConversion) {
+      const wikiMatches = this.findWikiLinks(content, noteDir, sourcePath, codeRanges);
+      broken.push(...wikiMatches);
+    }
+
     return broken;
+  }
+
+  /**
+   * Find wiki embed links that resolve to image files.
+   */
+  private findWikiLinks(
+    content: string,
+    noteDir: string,
+    sourcePath: string,
+    codeRanges: Range[]
+  ): BrokenMatch[] {
+    const matches: BrokenMatch[] = [];
+    let match: RegExpExecArray | null;
+
+    WIKI_EMBED_REGEX.lastIndex = 0;
+    while ((match = WIKI_EMBED_REGEX.exec(content)) !== null) {
+      if (codeRanges.length > 0 && isInsideCodeBlock(match.index, codeRanges)) continue;
+
+      const rawPath = match[1].trim();
+      if (!rawPath) continue;
+      if (rawPath.startsWith('http://') || rawPath.startsWith('https://')) continue;
+
+      // Primary resolution: Obsidian API
+      let resolved: TFile | null = this.app.metadataCache.getFirstLinkpathDest(rawPath, sourcePath);
+
+      // Fallback 1: manual attachment folder from settings
+      if (!resolved && this.settings?.manualAttachmentFolder) {
+        const manualPath = normalizePath(`${this.settings.manualAttachmentFolder}/${rawPath}`);
+        const manualFile = this.app.vault.getAbstractFileByPath(manualPath);
+        if (manualFile instanceof TFile && IMAGE_EXTENSIONS.has(manualFile.extension.toLowerCase())) {
+          resolved = manualFile;
+        }
+      }
+
+      // Fallback 2: Obsidian's configured attachment folder
+      if (!resolved) {
+        try {
+          const attachmentFolder = (this.app.vault as any).getConfig?.('attachmentFolderPath');
+          if (attachmentFolder && typeof attachmentFolder === 'string') {
+            const attachPath = normalizePath(`${attachmentFolder}/${rawPath}`);
+            const attachFile = this.app.vault.getAbstractFileByPath(attachPath);
+            if (attachFile instanceof TFile && IMAGE_EXTENSIONS.has(attachFile.extension.toLowerCase())) {
+              resolved = attachFile;
+            }
+          }
+        } catch {
+          // getConfig not available, skip
+        }
+      }
+
+      if (!resolved || !IMAGE_EXTENSIONS.has(resolved.extension.toLowerCase())) continue;
+
+      const resolvedPath = resolved.path;
+
+      // Compute relative path from note directory
+      const cleanedPath = this.computeRelativePath(noteDir, resolvedPath);
+      const fileName = this.extractFileName(cleanedPath);
+      if (!fileName) continue;
+
+      matches.push({
+        from: match.index,
+        to: match.index + match[0].length,
+        alt: match[2] || '',
+        rawPath,
+        cleanedPath,
+        fileName,
+        isWiki: true,
+      });
+    }
+
+    return matches;
   }
 
   /**
@@ -139,9 +229,18 @@ export class BrokenLinkRepairer {
     const replacements: Array<{ from: number; to: number; insert: string }> = [];
 
     for (const b of broken) {
-      const found = this.searchVault(vaultImages, b.fileName, noteDir);
-      if (found) {
-        const newLink = `![${b.alt}](${found})`;
+      let newPath: string | null = null;
+
+      if (b.isWiki) {
+        // Wiki matches: use cleanedPath directly (already resolved)
+        newPath = b.cleanedPath;
+      } else {
+        // Standard markdown: search vault for the file
+        newPath = this.searchVault(vaultImages, b.fileName, noteDir);
+      }
+
+      if (newPath) {
+        const newLink = `![${b.alt}](${newPath})`;
         replacements.push({ from: b.from, to: b.to, insert: newLink });
       }
     }
