@@ -20,9 +20,17 @@ interface BrokenMatch {
   isWiki: boolean;
 }
 
+export interface RepairResult {
+  brokenFixed: number;
+  wikiConverted: number;
+  total: number;
+}
+
 export interface RepairAllResult {
   scanned: number;
-  fixed: number;
+  brokenFixed: number;
+  wikiConverted: number;
+  total: number;
 }
 
 export class BrokenLinkRepairer {
@@ -35,15 +43,15 @@ export class BrokenLinkRepairer {
    * Repair broken image links in the active note (via EditorView).
    * Returns the number of links repaired, or -1 if no active note.
    */
-  async repair(view: EditorView): Promise<number> {
+  async repair(view: EditorView): Promise<RepairResult | null> {
     const activeFile = this.getActiveFile();
-    if (!activeFile) return -1;
+    if (!activeFile) return null;
 
     const content = view.state.doc.toString();
     const noteDir = activeFile.parent?.path ?? '';
 
     const broken = this.findBrokenLinks(content, noteDir, activeFile.path);
-    if (broken.length === 0) return 0;
+    if (broken.length === 0) return { brokenFixed: 0, wikiConverted: 0, total: 0 };
 
     const vaultImages = this.buildVaultImageIndex();
     const replacements = this.computeReplacements(broken, vaultImages, noteDir);
@@ -57,7 +65,9 @@ export class BrokenLinkRepairer {
       }
     }
 
-    return replacements.length;
+    const wikiConverted = replacements.filter(r => r.isWiki).length;
+    const brokenFixed = replacements.length - wikiConverted;
+    return { brokenFixed, wikiConverted, total: replacements.length };
   }
 
   /**
@@ -68,7 +78,8 @@ export class BrokenLinkRepairer {
     const mdFiles = this.app.vault.getMarkdownFiles();
     const vaultImages = this.buildVaultImageIndex();
     let scanned = 0;
-    let fixed = 0;
+    let brokenFixed = 0;
+    let wikiConverted = 0;
 
     for (const mdFile of mdFiles) {
       const content = await this.app.vault.read(mdFile);
@@ -94,11 +105,12 @@ export class BrokenLinkRepairer {
       }
 
       await this.app.vault.modify(mdFile, newContent);
-      fixed += replacements.length;
+      brokenFixed += replacements.filter(r => !r.isWiki).length;
+      wikiConverted += replacements.filter(r => r.isWiki).length;
       scanned++;
     }
 
-    return { scanned, fixed };
+    return { scanned, brokenFixed, wikiConverted, total: brokenFixed + wikiConverted };
   }
 
   /**
@@ -236,8 +248,8 @@ export class BrokenLinkRepairer {
     broken: BrokenMatch[],
     vaultImages: Map<string, TFile[]>,
     noteDir: string
-  ): Array<{ from: number; to: number; insert: string }> {
-    const replacements: Array<{ from: number; to: number; insert: string }> = [];
+  ): Array<{ from: number; to: number; insert: string; isWiki: boolean }> {
+    const replacements: Array<{ from: number; to: number; insert: string; isWiki: boolean }> = [];
 
     for (const b of broken) {
       let newPath: string | null = null;
@@ -253,7 +265,7 @@ export class BrokenLinkRepairer {
       if (newPath) {
         const encodedPath = newPath.replace(/ /g, '%20');
         const newLink = `![${b.alt}](${encodedPath})`;
-        replacements.push({ from: b.from, to: b.to, insert: newLink });
+        replacements.push({ from: b.from, to: b.to, insert: newLink, isWiki: b.isWiki });
       }
     }
 

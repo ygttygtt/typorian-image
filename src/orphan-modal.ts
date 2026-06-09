@@ -226,22 +226,44 @@ export class OrphanImageModal extends Modal {
     const editorView = (view as any).editor?.cm;
     if (!editorView) return;
 
-    const count = await this.repairer.repair(editorView);
-    if (count > 0) {
-      new Notice(t('orphan.repairFixed', { count }));
-      await this.scanAndRender();
-    } else {
+    const result = await this.repairer.repair(editorView);
+    if (!result) {
+      new Notice(t('orphan.repairNoActive'));
+      return;
+    }
+
+    const { brokenFixed, wikiConverted, total } = result;
+    if (total === 0) {
       new Notice(t('orphan.repairNone'));
+    } else if (brokenFixed > 0 && wikiConverted > 0) {
+      new Notice(t('orphan.repairFixedBoth', { broken: brokenFixed, wiki: wikiConverted }));
+    } else if (wikiConverted > 0) {
+      new Notice(t('orphan.repairFixedWiki', { count: wikiConverted }));
+    } else {
+      new Notice(t('orphan.repairFixedBroken', { count: brokenFixed }));
+    }
+
+    if (total > 0) {
+      await this.scanAndRender();
     }
   }
 
   private async handleRepairAll(): Promise<void> {
     const result = await this.repairer.repairAll();
-    if (result.fixed > 0) {
-      new Notice(t('orphan.repairAllFixed', { scanned: result.scanned, fixed: result.fixed }));
-      await this.scanAndRender();
-    } else {
+    const { scanned, brokenFixed, wikiConverted, total } = result;
+
+    if (total === 0) {
       new Notice(t('orphan.repairAllNone'));
+    } else if (brokenFixed > 0 && wikiConverted > 0) {
+      new Notice(t('orphan.repairAllFixedBoth', { scanned, broken: brokenFixed, wiki: wikiConverted }));
+    } else if (wikiConverted > 0) {
+      new Notice(t('orphan.repairAllFixedWiki', { scanned, count: wikiConverted }));
+    } else {
+      new Notice(t('orphan.repairAllFixedBroken', { scanned, count: brokenFixed }));
+    }
+
+    if (total > 0) {
+      await this.scanAndRender();
     }
   }
 
