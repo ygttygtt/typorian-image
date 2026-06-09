@@ -78,7 +78,6 @@ type LocaleKey =
   | 'restructure.cancel'
   | 'restructure.confirm'
   | 'restructure.success'
-  | 'restructure.warning'
   | 'restructure.scanning'
   | 'share.openFolder'
   | 'share.openFolder.desc'
@@ -88,10 +87,8 @@ type LocaleKey =
   | 'restructure.table.note'
   | 'restructure.table.assets'
   | 'restructure.table.images'
-  | 'restructure.modeSandbox'
   | 'restructure.modeOverwrite'
   | 'restructure.modeSandboxDesc'
-  | 'restructure.modeOverwriteDesc'
   | 'restructure.overwriteWarning'
   | 'restructure.orphanBlock';
 
@@ -181,7 +178,6 @@ const zh: Record<LocaleKey, string> = {
   'restructure.cancel': '取消',
   'restructure.confirm': '请输入 confirm 以确认覆盖',
   'restructure.success': '重构完成，文件已复制至 {path}',
-  'restructure.warning': '警告: 此操作将在 Vault 根目录创建 _Restructured_Vault/ 沙盒目录',
   'restructure.scanning': '正在扫描 Vault...',
   'share.openFolder': '导出后打开文件夹',
   'share.openFolder.desc': '导出完成后自动打开目标文件夹',
@@ -191,10 +187,8 @@ const zh: Record<LocaleKey, string> = {
   'restructure.table.note': '文档',
   'restructure.table.assets': '目标路径',
   'restructure.table.images': '图片数',
-  'restructure.modeSandbox': '沙箱模式',
   'restructure.modeOverwrite': '覆盖模式',
   'restructure.modeSandboxDesc': '生成重构副本到 _Restructured_Vault/ 目录，不影响原文件',
-  'restructure.modeOverwriteDesc': '直接重构原文件（需确认，有无主图片时不可用）',
   'restructure.overwriteWarning': '警告：覆盖模式将直接修改原文件，此操作不可撤销！',
   'restructure.orphanBlock': '检测到无主图片，请先清理后再执行覆盖重构。',
 };
@@ -286,7 +280,6 @@ const en: Record<LocaleKey, string> = {
   'restructure.cancel': 'Cancel',
   'restructure.confirm': 'Type confirm to proceed',
   'restructure.success': 'Restructure complete, files copied to {path}',
-  'restructure.warning': 'Warning: This will create a _Restructured_Vault/ sandbox directory at vault root',
   'restructure.scanning': 'Scanning vault...',
   'share.openFolder': 'Open folder after export',
   'share.openFolder.desc': 'Automatically open the target folder after export',
@@ -296,10 +289,8 @@ const en: Record<LocaleKey, string> = {
   'restructure.table.note': 'Note',
   'restructure.table.assets': 'Target Path',
   'restructure.table.images': 'Images',
-  'restructure.modeSandbox': 'Sandbox',
   'restructure.modeOverwrite': 'Overwrite',
   'restructure.modeSandboxDesc': 'Generate restructured copy in _Restructured_Vault/ without touching originals',
-  'restructure.modeOverwriteDesc': 'Restructure files in-place (requires confirmation, blocked if orphan images exist)',
   'restructure.overwriteWarning': 'Warning: Overwrite mode will modify original files. This cannot be undone!',
   'restructure.orphanBlock': 'Orphan images detected. Please clean up orphan images before overwrite restructure.',
 };

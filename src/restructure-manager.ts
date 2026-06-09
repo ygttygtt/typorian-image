@@ -155,6 +155,8 @@ export class RestructureManager {
       (e) => e.type === 'note' && selectedPaths.has(e.sourcePath)
     );
 
+    const trashOriginals: TFile[] = [];
+
     for (const entry of noteEntries) {
       const sourceFile = this.app.vault.getAbstractFileByPath(entry.sourcePath);
       if (!(sourceFile instanceof TFile)) continue;
@@ -192,28 +194,41 @@ export class RestructureManager {
         : `${sourceFile.basename}.assets`;
       await this.ensureDir(assetsDir);
 
-      // Copy images to the new .assets directory
-      const imageEntries = plan.entries.filter(
-        (e) => e.type === 'image' && e.sourcePath.startsWith(noteDir || '')
-      );
-      for (const imgEntry of imageEntries) {
-        const imgFile = this.app.vault.getAbstractFileByPath(imgEntry.sourcePath);
+      // Re-scan note content for image references, resolve and copy only those
+      MD_IMAGE_REGEX.lastIndex = 0;
+      const copiedImages = new Set<string>();
+      while ((match = MD_IMAGE_REGEX.exec(content)) !== null) {
+        const rawPath = match[2];
+        if (rawPath.startsWith('http://') || rawPath.startsWith('https://')) continue;
+
+        const resolvedPath = this.resolveImagePath(noteDir, rawPath);
+        if (!resolvedPath || copiedImages.has(resolvedPath)) continue;
+
+        const imgFile = this.app.vault.getAbstractFileByPath(normalizePath(resolvedPath));
         if (!(imgFile instanceof TFile)) continue;
         // Skip if already in the correct .assets directory
         if (imgFile.parent?.path === assetsDir) continue;
 
+        copiedImages.add(resolvedPath);
         const data = await this.app.vault.readBinary(imgFile);
-        const targetPath = normalizePath(`${assetsDir}/${imgFile.name}`);
-        // Check if target already exists
-        const existing = this.app.vault.getAbstractFileByPath(targetPath);
+        const targetImgPath = normalizePath(`${assetsDir}/${imgFile.name}`);
+        const existing = this.app.vault.getAbstractFileByPath(targetImgPath);
         if (!existing) {
-          await this.app.vault.createBinary(targetPath, data);
+          await this.app.vault.createBinary(targetImgPath, data);
         }
+        trashOriginals.push(imgFile);
       }
 
       // Update the note content with new image paths
       await this.app.vault.modify(sourceFile, newContent);
       processed++;
+    }
+
+    // Phase 2: Trash original image files that were copied to new .assets directories
+    for (const file of trashOriginals) {
+      // Don't trash if the file is already in an .assets directory
+      if (file.parent?.path?.endsWith('.assets')) continue;
+      await this.app.vault.trash(file, false);
     }
 
     return processed;
