@@ -43,4 +43,8 @@ export const ICON_PRESETS: Record<string, string[]> = {
     'git-fork', 'git-branch', 'network', 'workflow', 'database', 'component',
     'shuffle', 'folder-sync', 'layers', 'boxes', 'layout', 'layout-grid',
   ],
+  'Wiki Converter': [
+    'repeat', 'repeat-2', 'refresh-cw', 'replace', 'arrow-right-left',
+    'file-input', 'file-output', 'import', 'export', 'switch-camera',
+  ],
 };

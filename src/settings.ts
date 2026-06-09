@@ -11,6 +11,8 @@ export interface TyporianSettings {
   iconShare: string;
   iconRestructure: string;
   openFolderAfterExport: boolean;
+  showWikiConverter: boolean;
+  iconWikiConverter: string;
 }
 
 export const DEFAULT_SETTINGS: TyporianSettings = {
@@ -26,4 +28,6 @@ export const DEFAULT_SETTINGS: TyporianSettings = {
   iconShare: 'share-2',
   iconRestructure: 'git-fork',
   openFolderAfterExport: false,
+  showWikiConverter: true,
+  iconWikiConverter: 'repeat-2',
 };

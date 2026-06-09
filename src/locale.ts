@@ -90,7 +90,24 @@ type LocaleKey =
   | 'restructure.modeOverwrite'
   | 'restructure.modeSandboxDesc'
   | 'restructure.overwriteWarning'
-  | 'restructure.orphanBlock';
+  | 'restructure.orphanBlock'
+  | 'wiki.title'
+  | 'wiki.scanning'
+  | 'wiki.empty'
+  | 'wiki.summary'
+  | 'wiki.convert'
+  | 'wiki.convertCount'
+  | 'wiki.convertDone'
+  | 'wiki.modeCurrent'
+  | 'wiki.modeAll'
+  | 'settings.section.passive'
+  | 'settings.section.orphan'
+  | 'settings.section.wiki'
+  | 'settings.section.share'
+  | 'settings.section.restructure'
+  | 'settings.showWikiConverter.name'
+  | 'settings.showWikiConverter.desc'
+  | 'settings.icons.wikiConverter';
 
 const zh: Record<LocaleKey, string> = {
   'settings.namingStrategy.name': '图片命名策略',
@@ -191,6 +208,23 @@ const zh: Record<LocaleKey, string> = {
   'restructure.modeSandboxDesc': '生成重构副本到 _Restructured_Vault/ 目录，不影响原文件',
   'restructure.overwriteWarning': '警告：覆盖模式将直接修改原文件，此操作不可撤销！',
   'restructure.orphanBlock': '检测到无主图片，请先清理后再执行覆盖重构。',
+  'wiki.title': 'Wiki 链接转换',
+  'wiki.scanning': '正在扫描 Wiki 链接...',
+  'wiki.empty': '未发现 Wiki 图片链接。',
+  'wiki.summary': '条 Wiki 图片链接',
+  'wiki.convert': '转换选中',
+  'wiki.convertCount': '转换选中 ({count} 条)',
+  'wiki.convertDone': '已转换 {count} 条 Wiki 链接。',
+  'wiki.modeCurrent': '当前笔记',
+  'wiki.modeAll': '全部笔记',
+  'settings.section.passive': '图片粘贴',
+  'settings.section.orphan': '无主图片清理',
+  'settings.section.wiki': 'Wiki 链接转换',
+  'settings.section.share': '一键分享',
+  'settings.section.restructure': '附件重构',
+  'settings.showWikiConverter.name': '显示 Wiki 转换工具',
+  'settings.showWikiConverter.desc': '开启后，左侧栏将出现 Wiki 链接转换入口。',
+  'settings.icons.wikiConverter': 'Wiki 转换按钮图标',
 };
 
 const en: Record<LocaleKey, string> = {
@@ -293,6 +327,23 @@ const en: Record<LocaleKey, string> = {
   'restructure.modeSandboxDesc': 'Generate restructured copy in _Restructured_Vault/ without touching originals',
   'restructure.overwriteWarning': 'Warning: Overwrite mode will modify original files. This cannot be undone!',
   'restructure.orphanBlock': 'Orphan images detected. Please clean up orphan images before overwrite restructure.',
+  'wiki.title': 'Wiki Link Converter',
+  'wiki.scanning': 'Scanning wiki links...',
+  'wiki.empty': 'No wiki image links found.',
+  'wiki.summary': 'wiki image link(s)',
+  'wiki.convert': 'Convert Selected',
+  'wiki.convertCount': 'Convert Selected ({count})',
+  'wiki.convertDone': 'Converted {count} wiki link(s).',
+  'wiki.modeCurrent': 'Current Note',
+  'wiki.modeAll': 'All Notes',
+  'settings.section.passive': 'Image Paste',
+  'settings.section.orphan': 'Orphan Cleanup',
+  'settings.section.wiki': 'Wiki Link Conversion',
+  'settings.section.share': 'Quick Share',
+  'settings.section.restructure': 'Attachment Restructure',
+  'settings.showWikiConverter.name': 'Show Wiki converter tool',
+  'settings.showWikiConverter.desc': 'When enabled, the Wiki link converter appears in the ribbon.',
+  'settings.icons.wikiConverter': 'Wiki converter button icon',
 };
 
 let currentLocale: 'zh' | 'en' = 'en';
