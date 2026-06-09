@@ -195,6 +195,23 @@ export class OrphanImageModal extends Modal {
         evt.stopPropagation();
         this.app.workspace.getLeaf().openFile(file);
       });
+
+      // Delete link button
+      const deleteBtn = actions.createEl('button', {
+        cls: 'orphan-locate-btn',
+        attr: { 'aria-label': t('orphan.removeLink'), title: t('orphan.removeLink') },
+      });
+      deleteBtn.innerHTML = getIconSvg('trash-2');
+      deleteBtn.addEventListener('click', async (evt) => {
+        evt.stopPropagation();
+        const currentContent = await this.app.vault.read(file);
+        const idx = currentContent.indexOf(link.rawLink);
+        if (idx === -1) return;
+        const newContent = currentContent.substring(0, idx) + currentContent.substring(idx + link.rawLink.length);
+        await this.app.vault.modify(file, newContent);
+        // Re-scan
+        await this.scanAndRender();
+      });
     }
   }
 

@@ -46,6 +46,7 @@ type LocaleKey =
   | 'orphan.brokenLinks'
   | 'orphan.brokenLinksDesc'
   | 'orphan.brokenLinkLine'
+  | 'orphan.removeLink'
   | 'settings.interceptImage.name'
   | 'settings.interceptImage.desc'
   | 'settings.wikiConversion.name'
@@ -160,6 +161,7 @@ const zh: Record<LocaleKey, string> = {
   'orphan.brokenLinks': '无法解析的图片链接',
   'orphan.brokenLinksDesc': '以下链接无法解析到任何文件，可能已丢失或损坏：',
   'orphan.brokenLinkLine': '第 {line} 行',
+  'orphan.removeLink': '删除链接',
   'settings.interceptImage.name': '拦截图片粘贴路径',
   'settings.interceptImage.desc': '开启后，粘贴或拖入的图片将保存到笔记同级的资源文件夹中。关闭时使用 Obsidian 默认行为。',
   'settings.wikiConversion.name': '修复时转换 Wiki 链接',
@@ -276,6 +278,7 @@ const en: Record<LocaleKey, string> = {
   'orphan.brokenLinks': 'Unresolvable image links',
   'orphan.brokenLinksDesc': 'The following links cannot be resolved to any file — the images may be lost or corrupted:',
   'orphan.brokenLinkLine': 'Line {line}',
+  'orphan.removeLink': 'Remove link',
   'settings.interceptImage.name': 'Intercept image paste path',
   'settings.interceptImage.desc': 'When enabled, pasted/dropped images are saved to the note\'s sibling assets folder. When disabled, Obsidian\'s default behavior is used.',
   'settings.wikiConversion.name': 'Convert Wiki links when repairing',
