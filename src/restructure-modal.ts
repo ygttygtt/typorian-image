@@ -182,10 +182,13 @@ export class RestructureModal extends Modal {
       }
 
       applyBtn.disabled = true;
-      applyBtn.textContent = '...';
       try {
         if (isOverwriteMode) {
-          const processed = await this.manager.applyOverwrite(this.plan, this.selectedNotes);
+          const total = this.selectedNotes.size;
+          applyBtn.textContent = `0/${total}`;
+          const processed = await this.manager.applyOverwrite(this.plan, this.selectedNotes, (current) => {
+            applyBtn.textContent = `${current}/${total}`;
+          });
           new Notice(t('restructure.success', { path: 'original vault' }));
         } else {
           await this.manager.apply(this.plan, this.selectedNotes);
