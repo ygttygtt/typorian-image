@@ -9,7 +9,6 @@ type LocaleKey =
   | 'settings.currentBehavior.desc1'
   | 'settings.currentBehavior.desc2'
   | 'settings.currentBehavior.desc3'
-  | 'settings.advanced'
   | 'settings.assetPath.name'
   | 'settings.assetPath.desc'
   | 'settings.typoraGuide'
@@ -35,7 +34,6 @@ type LocaleKey =
   | 'orphan.refresh'
   | 'orphan.repair'
   | 'orphan.repairAll'
-  | 'orphan.repairing'
   | 'orphan.repairFixedBroken'
   | 'orphan.repairFixedWiki'
   | 'orphan.repairFixedBoth'
@@ -45,7 +43,6 @@ type LocaleKey =
   | 'orphan.repairNone'
   | 'orphan.repairAllNone'
   | 'orphan.repairNoActive'
-  | 'orphan.wikiToggle'
   | 'orphan.brokenLinks'
   | 'orphan.brokenLinksDesc'
   | 'orphan.brokenLinkLine'
@@ -122,7 +119,6 @@ const zh: Record<LocaleKey, string> = {
     '当您在笔记中粘贴或拖放图片时，插件会将其保存到笔记同级的资源文件夹中，并插入标准 Markdown 图片链接。',
   'settings.currentBehavior.desc2': '资源文件夹模式：',
   'settings.currentBehavior.desc3': '输出语法：',
-  'settings.advanced': '高级选项',
   'settings.assetPath.name': '资源文件夹路径',
   'settings.assetPath.desc':
     '自定义图片保存的相对路径。${notename} 会被替换为当前笔记名。一般无需修改。',
@@ -152,7 +148,6 @@ const zh: Record<LocaleKey, string> = {
   'orphan.refresh': '刷新列表',
   'orphan.repair': '修复当前',
   'orphan.repairAll': '全局修复',
-  'orphan.repairing': '正在修复失效链接...',
   'orphan.repairFixedBroken': '已修复 {count} 处失效链接，正在重新扫描...',
   'orphan.repairFixedWiki': '已转换 {count} 处 Wiki 链接，正在重新扫描...',
   'orphan.repairFixedBoth': '已修复 {broken} 处失效链接、转换 {wiki} 处 Wiki 链接，正在重新扫描...',
@@ -162,7 +157,6 @@ const zh: Record<LocaleKey, string> = {
   'orphan.repairNone': '当前笔记中未发现失效图片链接。',
   'orphan.repairAllNone': '所有笔记中均未发现失效图片链接。',
   'orphan.repairNoActive': '请先打开一个笔记，再执行链接修复。',
-  'orphan.wikiToggle': '修复Wiki',
   'orphan.brokenLinks': '无法解析的图片链接',
   'orphan.brokenLinksDesc': '以下链接无法解析到任何文件，可能已丢失或损坏：',
   'orphan.brokenLinkLine': '第 {line} 行',
@@ -240,7 +234,6 @@ const en: Record<LocaleKey, string> = {
     'When you paste or drop an image into a note, the plugin saves it to the note\'s sibling assets folder and inserts a standard Markdown image link.',
   'settings.currentBehavior.desc2': 'Asset folder pattern:',
   'settings.currentBehavior.desc3': 'Output syntax:',
-  'settings.advanced': 'Advanced',
   'settings.assetPath.name': 'Asset folder path',
   'settings.assetPath.desc':
     'Custom relative path for saving images. ${notename} is replaced with the current note name. Normally no change is needed.',
@@ -271,7 +264,6 @@ const en: Record<LocaleKey, string> = {
   'orphan.refresh': 'Refresh list',
   'orphan.repair': 'Current',
   'orphan.repairAll': 'All notes',
-  'orphan.repairing': 'Repairing broken links...',
   'orphan.repairFixedBroken': 'Repaired {count} broken link(s). Rescanning...',
   'orphan.repairFixedWiki': 'Converted {count} wiki link(s). Rescanning...',
   'orphan.repairFixedBoth': 'Repaired {broken} broken link(s), converted {wiki} wiki link(s). Rescanning...',
@@ -281,7 +273,6 @@ const en: Record<LocaleKey, string> = {
   'orphan.repairNone': 'No broken image links found in current note.',
   'orphan.repairAllNone': 'No broken image links found across all notes.',
   'orphan.repairNoActive': 'Please open a note first to repair links.',
-  'orphan.wikiToggle': 'Repair Wiki',
   'orphan.brokenLinks': 'Unresolvable image links',
   'orphan.brokenLinksDesc': 'The following links cannot be resolved to any file — the images may be lost or corrupted:',
   'orphan.brokenLinkLine': 'Line {line}',

@@ -1,6 +1,6 @@
 import { App, Modal, Notice } from 'obsidian';
 import { TyporianSettings } from './settings';
-import { RestructureManager, RestructurePlan, RestructureEntry } from './restructure-manager';
+import { RestructureManager, RestructurePlan } from './restructure-manager';
 import { t } from './locale';
 
 export class RestructureModal extends Modal {
