@@ -48,12 +48,11 @@ export class OrphanImageModal extends Modal {
         text: t('orphan.empty'),
         cls: 'orphan-status',
       });
-      this.renderFooter();
-      return;
+    } else {
+      this.renderHeader();
+      this.renderList();
     }
 
-    this.renderHeader();
-    this.renderList();
     await this.renderBrokenLinksSection();
     this.renderFooter();
   }
@@ -182,6 +181,19 @@ export class OrphanImageModal extends Modal {
       row.createSpan({
         text: t('orphan.brokenLinkLine', { line: link.line }),
         cls: 'orphan-broken-line',
+      });
+
+      // Action buttons
+      const actions = row.createDiv({ cls: 'orphan-actions' });
+
+      const openNoteBtn = actions.createEl('button', {
+        cls: 'orphan-locate-btn',
+        attr: { 'aria-label': t('orphan.locateNote'), title: t('orphan.locateNote') },
+      });
+      openNoteBtn.innerHTML = getIconSvg('file-text');
+      openNoteBtn.addEventListener('click', (evt) => {
+        evt.stopPropagation();
+        this.app.workspace.getLeaf().openFile(file);
       });
     }
   }

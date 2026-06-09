@@ -222,7 +222,8 @@ export class WikiConverterModal extends Modal {
         if (!item.resolvedFile) continue;
         const relPath = PathUtils.computeRelativePath(noteDir, item.resolvedFile.path);
         const encodedPath = relPath.replace(/ /g, '%20');
-        const newLink = `![${item.alt}](${encodedPath})`;
+        const altText = item.alt || item.resolvedFile?.basename || item.rawPath.replace(/\.\w+$/, '');
+        const newLink = `![${altText}](${encodedPath})`;
         newContent = newContent.substring(0, pos) + newLink + newContent.substring(pos + item.rawLink.length);
         totalConverted++;
       }
