@@ -307,7 +307,7 @@ export class BrokenLinkRepairer {
   }
 
   private computeRelativePath(noteDir: string, targetPath: string): string {
-    const noteParts = noteDir ? noteDir.split('/') : [];
+    const noteParts = noteDir.split('/').filter(s => s !== '');
     const targetParts = targetPath.split('/');
 
     let commonLen = 0;
