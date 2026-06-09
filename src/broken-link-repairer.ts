@@ -294,16 +294,49 @@ export class BrokenLinkRepairer {
     fileName: string,
     noteDir: string
   ): string | null {
-    const candidates = index.get(fileName.toLowerCase());
+    // Tier 1: Exact match
+    let candidates = index.get(fileName.toLowerCase());
+
+    // Tier 2: Try with spaces <-> %20
+    if (!candidates || candidates.length === 0) {
+      const encoded = fileName.replace(/ /g, '%20');
+      candidates = index.get(encoded.toLowerCase());
+    }
+    if (!candidates || candidates.length === 0) {
+      const decoded = fileName.replace(/%20/g, ' ');
+      candidates = index.get(decoded.toLowerCase());
+    }
+
+    // Tier 3: Fuzzy — strip (N) suffix from both search key and index keys
+    if (!candidates || candidates.length === 0) {
+      const stripped = this.stripDuplicateSuffix(fileName).toLowerCase();
+      for (const [key, files] of index) {
+        if (this.stripDuplicateSuffix(key) === stripped) {
+          candidates = files;
+          break;
+        }
+      }
+    }
+
     if (!candidates || candidates.length === 0) return null;
 
+    // Prefer .assets/ folder matches
     const assetsCandidates = candidates.filter((f) => f.path.includes('.assets/'));
     const pool = assetsCandidates.length > 0 ? assetsCandidates : candidates;
 
+    // Prefer same-directory matches
     const sameDir = pool.filter((f) => f.parent?.path === noteDir);
     const target = sameDir.length > 0 ? sameDir[0] : pool[0];
 
     return this.computeRelativePath(noteDir, target.path);
+  }
+
+  /**
+   * Strip Obsidian's duplicate-name suffix: "img(1).png" -> "img.png"
+   * Only strips the LAST (N) before the extension.
+   */
+  private stripDuplicateSuffix(fileName: string): string {
+    return fileName.replace(/\(\d+\)(?=\.\w+$)/, '');
   }
 
   private computeRelativePath(noteDir: string, targetPath: string): string {
