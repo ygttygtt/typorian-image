@@ -2,8 +2,7 @@ import { App, Modal, Notice, TFile, MarkdownView } from 'obsidian';
 import { TyporianSettings } from './settings';
 import { getIconSvg } from './icon-utils';
 import { t } from './locale';
-
-const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'bmp', 'ico', 'avif']);
+import { IMAGE_EXTENSIONS } from './orphan-types';
 const WIKI_REGEX = /!\[\[([^\]|]+?)(?:\|([^\]]*?))?\]\]/g;
 
 interface WikiLinkItem {
