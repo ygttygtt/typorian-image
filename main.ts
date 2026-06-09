@@ -7,6 +7,7 @@ import { TyporianSettings, DEFAULT_SETTINGS } from './src/settings';
 import { OrphanImageModal } from './src/orphan-modal';
 import { ShareModal } from './src/share-modal';
 import { RestructureModal } from './src/restructure-modal';
+import { WikiConverterModal } from './src/wiki-converter-modal';
 import { initLocale, t } from './src/locale';
 
 export default class TyporianImagePlugin extends Plugin {
@@ -16,6 +17,7 @@ export default class TyporianImagePlugin extends Plugin {
   private ribbonAuditEl!: HTMLElement;
   private ribbonShareEl!: HTMLElement;
   private ribbonRestructureEl!: HTMLElement;
+  private ribbonWikiEl!: HTMLElement;
 
   async onload(): Promise<void> {
     await this.loadSettings();
@@ -33,6 +35,16 @@ export default class TyporianImagePlugin extends Plugin {
       t('orphan.title'),
       () => { new OrphanImageModal(this.app, this.settings).open(); }
     );
+
+    this.ribbonWikiEl = this.addRibbonIcon(
+      this.settings.iconWikiConverter || 'repeat-2',
+      t('wiki.title'),
+      () => { new WikiConverterModal(this.app, this.settings).open(); }
+    );
+
+    if (!this.settings.showWikiConverter && this.ribbonWikiEl) {
+      this.ribbonWikiEl.style.display = 'none';
+    }
 
     this.ribbonShareEl = this.addRibbonIcon(
       this.settings.iconShare || 'share-2',
@@ -56,6 +68,20 @@ export default class TyporianImagePlugin extends Plugin {
       id: 'orphan-image-cleanup',
       name: t('orphan.title'),
       callback: () => { new OrphanImageModal(this.app, this.settings).open(); },
+    });
+
+    this.addCommand({
+      id: 'wiki-link-converter',
+      name: t('wiki.title'),
+      checkCallback: (checking) => {
+        if (this.settings.showWikiConverter) {
+          if (!checking) {
+            new WikiConverterModal(this.app, this.settings).open();
+          }
+          return true;
+        }
+        return false;
+      },
     });
 
     this.addCommand({
@@ -99,6 +125,10 @@ export default class TyporianImagePlugin extends Plugin {
     }
     if (this.ribbonShareEl) {
       setIcon(this.ribbonShareEl, this.settings.iconShare || 'share-2');
+    }
+    if (this.ribbonWikiEl) {
+      setIcon(this.ribbonWikiEl, this.settings.iconWikiConverter || 'repeat-2');
+      this.ribbonWikiEl.style.display = this.settings.showWikiConverter ? '' : 'none';
     }
     if (this.ribbonRestructureEl) {
       setIcon(this.ribbonRestructureEl, this.settings.iconRestructure || 'git-fork');
