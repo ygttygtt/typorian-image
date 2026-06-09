@@ -3,6 +3,7 @@ import { EditorView } from '@codemirror/view';
 import { IMAGE_EXTENSIONS, UnresolvableLink } from './orphan-types';
 import { extractCodeBlockRanges, isInsideCodeBlock, Range } from './code-block-filter';
 import { TyporianSettings } from './settings';
+import { PathUtils } from './path-utils';
 
 // Matches standard markdown image: ![alt](path)
 const MD_IMAGE_REGEX = /!\[([^\]]*)\]\(([^)]+)\)/g;
@@ -318,7 +319,7 @@ export class BrokenLinkRepairer {
       const resolved = this.tryResolveWikiLink(rawPath, sourcePath, noteDir, index);
       if (!resolved) continue;
 
-      const cleanedPath = this.computeRelativePath(noteDir, resolved.path);
+      const cleanedPath = PathUtils.computeRelativePath(noteDir, resolved.path);
       const fileName = this.extractFileName(cleanedPath);
       if (!fileName) continue;
 
@@ -448,7 +449,7 @@ export class BrokenLinkRepairer {
     const sameDir = pool.filter((f) => f.parent?.path === noteDir);
     const target = sameDir.length > 0 ? sameDir[0] : pool[0];
 
-    return this.computeRelativePath(noteDir, target.path);
+    return PathUtils.computeRelativePath(noteDir, target.path);
   }
 
   /**
@@ -457,25 +458,6 @@ export class BrokenLinkRepairer {
    */
   private stripDuplicateSuffix(fileName: string): string {
     return fileName.replace(/\(\d+\)(?=\.\w+$)/, '');
-  }
-
-  private computeRelativePath(noteDir: string, targetPath: string): string {
-    const noteParts = noteDir.split('/').filter(s => s !== '');
-    const targetParts = targetPath.split('/');
-
-    let commonLen = 0;
-    for (let i = 0; i < Math.min(noteParts.length, targetParts.length - 1); i++) {
-      if (noteParts[i] === targetParts[i]) {
-        commonLen++;
-      } else {
-        break;
-      }
-    }
-
-    const upCount = noteParts.length - commonLen;
-    const remaining = targetParts.slice(commonLen);
-    const prefix = '../'.repeat(upCount);
-    return prefix + remaining.join('/');
   }
 
   private getActiveFile(): TFile | null {

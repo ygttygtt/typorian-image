@@ -4,6 +4,7 @@ import { getIconSvg } from './icon-utils';
 import { t } from './locale';
 import { IMAGE_EXTENSIONS } from './orphan-types';
 import { extractCodeBlockRanges, isInsideCodeBlock } from './code-block-filter';
+import { PathUtils } from './path-utils';
 const WIKI_REGEX = /!\[\[([^\]|]+?)(?:\|([^\]]*?))?\]\]/g;
 
 interface WikiLinkItem {
@@ -219,7 +220,7 @@ export class WikiConverterModal extends Modal {
 
       for (const { item, pos } of positions) {
         if (!item.resolvedFile) continue;
-        const relPath = this.computeRelativePath(noteDir, item.resolvedFile.path);
+        const relPath = PathUtils.computeRelativePath(noteDir, item.resolvedFile.path);
         const encodedPath = relPath.replace(/ /g, '%20');
         const newLink = `![${item.alt}](${encodedPath})`;
         newContent = newContent.substring(0, pos) + newLink + newContent.substring(pos + item.rawLink.length);
@@ -233,19 +234,6 @@ export class WikiConverterModal extends Modal {
 
     new Notice(t('wiki.convertDone', { count: totalConverted }));
     await this.scanAndRender();
-  }
-
-  private computeRelativePath(noteDir: string, targetPath: string): string {
-    const noteParts = noteDir.split('/').filter((s) => s !== '');
-    const targetParts = targetPath.split('/');
-    let commonLen = 0;
-    for (let i = 0; i < Math.min(noteParts.length, targetParts.length - 1); i++) {
-      if (noteParts[i] === targetParts[i]) commonLen++;
-      else break;
-    }
-    const upCount = noteParts.length - commonLen;
-    const remaining = targetParts.slice(commonLen);
-    return '../'.repeat(upCount) + remaining.join('/');
   }
 
   private async scanWikiLinks(mode: 'current' | 'all'): Promise<WikiLinkItem[]> {

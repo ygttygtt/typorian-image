@@ -58,4 +58,21 @@ export class PathUtils {
       .map((seg) => seg.replace(/ /g, '%20'))
       .join('/');
   }
+
+  /**
+   * Compute relative path from noteDir to targetPath.
+   * Handles root directory (empty noteDir) correctly.
+   */
+  static computeRelativePath(noteDir: string, targetPath: string): string {
+    const noteParts = noteDir.split('/').filter(s => s !== '');
+    const targetParts = targetPath.split('/');
+    let commonLen = 0;
+    for (let i = 0; i < Math.min(noteParts.length, targetParts.length - 1); i++) {
+      if (noteParts[i] === targetParts[i]) commonLen++;
+      else break;
+    }
+    const upCount = noteParts.length - commonLen;
+    const remaining = targetParts.slice(commonLen);
+    return '../'.repeat(upCount) + remaining.join('/');
+  }
 }
