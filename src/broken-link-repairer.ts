@@ -439,6 +439,20 @@ export class BrokenLinkRepairer {
       }
     }
 
+    // Tier 4: Stem matching — strip all suffixes, match stem + same extension
+    if (!candidates || candidates.length === 0) {
+      const { stem, ext } = this.stripAllSuffixes(fileName);
+      if (stem && ext) {
+        for (const [key, files] of index) {
+          const { stem: keyStem, ext: keyExt } = this.stripAllSuffixes(key);
+          if (keyExt === ext && keyStem === stem) {
+            candidates = files;
+            break;
+          }
+        }
+      }
+    }
+
     if (!candidates || candidates.length === 0) return null;
 
     // Prefer .assets/ folder matches
@@ -458,6 +472,29 @@ export class BrokenLinkRepairer {
    */
   private stripDuplicateSuffix(fileName: string): string {
     return fileName.replace(/\(\d+\)(?=\.\w+$)/, '');
+  }
+
+  /**
+   * Strip all known suffix patterns to get the core filename stem.
+   * Handles combined suffixes like "image 1(1).png" iteratively.
+   * Returns { stem (lowercase, no extension), ext (lowercase) }.
+   */
+  private stripAllSuffixes(fileName: string): { stem: string; ext: string } {
+    const dotIdx = fileName.lastIndexOf('.');
+    if (dotIdx <= 0) return { stem: fileName.toLowerCase(), ext: '' };
+    const ext = fileName.substring(dotIdx + 1).toLowerCase();
+    let name = fileName.substring(0, dotIdx);
+
+    // Iteratively strip suffix patterns until stable
+    let prev = '';
+    while (name !== prev) {
+      prev = name;
+      name = name.replace(/-\d{10,}-\d+$/, '');  // Typora timestamp: -1780987736596-2
+      name = name.replace(/ \d+$/, '');            // Snipaste counter: " 1", " 1 2"
+      name = name.replace(/\(\d+\)$/, '');         // Obsidian duplicate: (1), (2)
+    }
+
+    return { stem: name.toLowerCase(), ext };
   }
 
   private getActiveFile(): TFile | null {
