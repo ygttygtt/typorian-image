@@ -128,6 +128,16 @@ export class BrokenLinkRepairer {
         continue;
       }
 
+      // Fallback: try with spaces encoded as %20
+      if (cleanedPath.includes(' ')) {
+        const encodedCleaned = cleanedPath.replace(/ /g, '%20');
+        const encodedResolved = this.resolveRelativePath(noteDir, encodedCleaned);
+        const encodedExisting = this.app.vault.getAbstractFileByPath(normalizePath(encodedResolved));
+        if (encodedExisting instanceof TFile && IMAGE_EXTENSIONS.has(encodedExisting.extension.toLowerCase())) {
+          continue;
+        }
+      }
+
       broken.push({
         from: match.index,
         to: match.index + match[0].length,
@@ -240,7 +250,8 @@ export class BrokenLinkRepairer {
       }
 
       if (newPath) {
-        const newLink = `![${b.alt}](${newPath})`;
+        const encodedPath = newPath.replace(/ /g, '%20');
+        const newLink = `![${b.alt}](${encodedPath})`;
         replacements.push({ from: b.from, to: b.to, insert: newLink });
       }
     }
