@@ -16,6 +16,22 @@ export class TyporianSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
+    // ========== Section: 图片粘贴 ==========
+    containerEl.createEl('h3', { text: t('settings.section.passive') });
+
+    // --- Intercept image path toggle ---
+    new Setting(containerEl)
+      .setName(t('settings.interceptImage.name'))
+      .setDesc(t('settings.interceptImage.desc'))
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.interceptImagePath)
+          .onChange(async (value) => {
+            this.plugin.settings.interceptImagePath = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
     // --- Naming strategy ---
     new Setting(containerEl)
       .setName(t('settings.namingStrategy.name'))
@@ -44,19 +60,6 @@ export class TyporianSettingTab extends PluginSettingTab {
           })
       );
 
-    // --- Intercept image path toggle ---
-    new Setting(containerEl)
-      .setName(t('settings.interceptImage.name'))
-      .setDesc(t('settings.interceptImage.desc'))
-      .addToggle((toggle) =>
-        toggle
-          .setValue(this.plugin.settings.interceptImagePath)
-          .onChange(async (value) => {
-            this.plugin.settings.interceptImagePath = value;
-            await this.plugin.saveSettings();
-          })
-      );
-
     // --- Asset folder path ---
     new Setting(containerEl)
       .setName(t('settings.assetPath.name'))
@@ -70,6 +73,9 @@ export class TyporianSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           })
       );
+
+    // ========== Section: 无主图片清理 ==========
+    containerEl.createEl('h3', { text: t('settings.section.orphan') });
 
     // --- Wiki link conversion toggle ---
     new Setting(containerEl)
@@ -111,6 +117,33 @@ export class TyporianSettingTab extends PluginSettingTab {
           })
       );
 
+    // ========== Section: Wiki 链接转换 ==========
+    containerEl.createEl('h3', { text: t('settings.section.wiki') });
+
+    // --- Show Wiki converter toggle ---
+    new Setting(containerEl)
+      .setName(t('settings.showWikiConverter.name'))
+      .setDesc(t('settings.showWikiConverter.desc'))
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.showWikiConverter)
+          .onChange(async (value) => {
+            this.plugin.settings.showWikiConverter = value;
+            await this.plugin.saveSettings();
+            this.plugin.refreshRibbonIcons();
+          })
+      );
+
+    // ========== Section: 一键分享 ==========
+    containerEl.createEl('h3', { text: t('settings.section.share') });
+    containerEl.createEl('p', {
+      text: `${t('share.title')} — ${t('share.exportPath.desc')}`,
+      cls: 'setting-item-description',
+    });
+
+    // ========== Section: 附件重构 ==========
+    containerEl.createEl('h3', { text: t('settings.section.restructure') });
+
     // --- Show restructure tool toggle ---
     new Setting(containerEl)
       .setName(t('settings.showRestructure.name'))
@@ -125,11 +158,12 @@ export class TyporianSettingTab extends PluginSettingTab {
           })
       );
 
-    // --- Icon settings ---
+    // ========== Section: 图标设置 ==========
     containerEl.createEl('h3', { text: t('settings.icons') });
 
     const iconCategories: Array<{ key: keyof TyporianSettings; labelKey: string; category: string }> = [
       { key: 'iconImageAudit', labelKey: 'settings.icons.imageAudit', category: 'Image Audit' },
+      { key: 'iconWikiConverter', labelKey: 'settings.icons.wikiConverter', category: 'Wiki Converter' },
       { key: 'iconShare', labelKey: 'settings.icons.share', category: 'Share' },
       { key: 'iconRestructure', labelKey: 'settings.icons.restructure', category: 'Restructure' },
     ];
@@ -163,7 +197,7 @@ export class TyporianSettingTab extends PluginSettingTab {
       });
     }
 
-    // --- Current behavior info (bottom) ---
+    // ========== Section: 当前行为 ==========
     containerEl.createEl('h3', { text: t('settings.currentBehavior') });
     const infoEl = containerEl.createEl('div', {
       cls: 'setting-item-description',
@@ -176,7 +210,7 @@ export class TyporianSettingTab extends PluginSettingTab {
       text: `${t('settings.currentBehavior.desc3')}  ![image](${this.plugin.settings.assetFolderPath.replace('${notename}', 'MyNote')}image.png)`,
     });
 
-    // --- Typora alignment guide ---
+    // ========== Section: Typora 配置对齐指南 ==========
     containerEl.createEl('h3', { text: t('settings.typoraGuide') });
     const guideEl = containerEl.createEl('div', {
       cls: 'setting-item-description',
