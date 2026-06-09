@@ -297,7 +297,8 @@ export class BrokenLinkRepairer {
     // Tier 1: Exact match
     let candidates = index.get(fileName.toLowerCase());
 
-    // Tier 2: Try with spaces <-> %20
+    // Tier 2: Try with spaces ↔ %20 (defensive — cleanPath already decodes,
+    // but the index may contain files with literal %20 or spaces in names)
     if (!candidates || candidates.length === 0) {
       const encoded = fileName.replace(/ /g, '%20');
       candidates = index.get(encoded.toLowerCase());
@@ -311,7 +312,7 @@ export class BrokenLinkRepairer {
     if (!candidates || candidates.length === 0) {
       const stripped = this.stripDuplicateSuffix(fileName).toLowerCase();
       for (const [key, files] of index) {
-        if (this.stripDuplicateSuffix(key) === stripped) {
+        if (this.stripDuplicateSuffix(key).toLowerCase() === stripped) {
           candidates = files;
           break;
         }
