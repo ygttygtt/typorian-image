@@ -85,8 +85,10 @@ export class WikiConverterModal extends Modal {
     this.selectAllCheckbox = selectAllLabel.createEl('input', { type: 'checkbox' });
     selectAllLabel.createSpan({ text: t('orphan.selectAll') });
     this.selectAllCheckbox.addEventListener('change', () => {
-      const checked = this.selectAllCheckbox!.checked;
-      this.checkboxes.forEach((cb) => { cb.checked = checked; });
+      const allChecked = Array.from(this.checkboxes.values()).every((cb) => cb.checked);
+      // If all are checked, deselect all. Otherwise, select all.
+      const newState = !allChecked;
+      this.checkboxes.forEach((cb) => { cb.checked = newState; });
       this.updateConvertButton();
     });
 
@@ -134,7 +136,7 @@ export class WikiConverterModal extends Modal {
 
     // All selected by default
     this.checkboxes.forEach((cb) => { cb.checked = true; });
-    if (this.selectAllCheckbox) this.selectAllCheckbox.checked = true;
+    this.syncSelectAll();
     this.updateConvertButton();
   }
 
