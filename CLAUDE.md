@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Typorian Image — an Obsidian plugin that enforces standard Markdown image syntax with Typora-compatible `.assets` folder paths. Intercepts paste/drop events, saves images to `${notename}.assets/`, and inserts `![name](path)` instead of `![[name]]`.
 
-**Current version**: v1.3.1 (released).
+**Current version**: v1.3.1 (released). Includes wiki converter feature and modular architecture.
 
 **Superpowers**: Before every task, check and invoke applicable skills (writing-plans, brainstorming, executing-plans, systematic-debugging). Process skills first, implementation skills second. See memory `superpowers-usage.md`.
 
@@ -47,8 +47,29 @@ src/
   share-modal.ts             Share modal UI: format toggle, export path
   restructure-manager.ts     Vault restructuring: sandbox _Restructured_Vault/, preview + apply
   restructure-modal.ts       Restructure modal UI: file tree preview, confirm-to-apply
+  wiki-converter-modal.ts    WikiConverterModal: scan/preview/convert wiki image links
 styles.css                   All plugin CSS: settings, orphan modal, share, restructure
 ```
+
+### Feature Modules
+
+The plugin is organized into 5 feature modules. Each module is self-contained and can be extracted into a standalone plugin if needed.
+
+| Module | Files | Ribbon | Command | Settings |
+|--------|-------|--------|---------|----------|
+| **Passive Intercept** | image-handler.ts, cm6-paste-plugin.ts, path-utils.ts, constants.ts | ❌ | ❌ | namingStrategy, autoRename, interceptImagePath, assetFolderPath |
+| **Orphan Cleanup** | orphan-modal.ts, orphan-detector.ts, orphan-types.ts, broken-link-repairer.ts, code-block-filter.ts | ✅ trash-2 | ✅ orphan-image-cleanup | enableWikiLinkConversion, scanCodeBlocks, manualAttachmentFolder |
+| **Wiki Converter** | wiki-converter-modal.ts, orphan-types.ts (shared) | ✅ repeat-2 | ✅ wiki-link-converter | showWikiConverter, iconWikiConverter |
+| **Share** | share-manager.ts, share-modal.ts | ✅ share-2 | ✅ share-note | openFolderAfterExport |
+| **Restructure** | restructure-manager.ts, restructure-modal.ts | ✅ git-fork | ✅ restructure-vault | showRestructureTool, iconRestructure |
+
+**To split a module into a standalone plugin:**
+1. Copy the module's files into a new plugin project
+2. Copy shared dependencies (locale.ts, icon-utils.ts, orphan-types.ts if needed)
+3. Move the relevant settings fields into the new plugin's settings interface
+4. Move the ribbon icon + command registration from main.ts
+5. Move the relevant settings section from setting-tab.ts
+6. Move relevant CSS from styles.css
 
 ### TypeScript
 
@@ -79,10 +100,11 @@ paste/drop event (capture phase)
 - **Code block filter**: `extractCodeBlockRanges()` + `isInsideCodeBlock()` binary search. Repair skips links inside fenced/inline code unless `scanCodeBlocks` is on.
 - **Wiki link conversion**: `WIKI_EMBED_REGEX` matches `![[img]]` / `![[img|alt]]`. Resolution: `getFirstLinkpathDest` → manual folder → Obsidian attachment config.
 - **Wiki toggle in modal**: Inline toggle in orphan modal footer, session-only override (reads default from settings, does not persist).
+- **Wiki link converter**: Independent modal (`WikiConverterModal`) with ribbon icon + command. Scans current/all notes for `![[path]]` wiki embeds, shows list with thumbnails, selective conversion to standard markdown `![alt](path)`. Replaces the wiki toggle that was previously embedded in the orphan modal.
 - **One-click share**: `ShareManager` exports note + images as folder or ZIP (JSZip bundled). Native folder picker via `electron.remote.dialog`. "Open folder after export" toggle.
 - **Vault restructure**: `RestructureManager` creates `_Restructured_Vault/` sandbox. Table-based preview with checkboxes, smart filtering (no-image notes flagged).
 - **Icon customization**: 3 configurable Lucide icons (audit/share/restructure). `setIcon()` on ribbon element for live refresh. Inline preview in settings dropdown.
-- **Flat settings**: All settings displayed flat (no accordion). "Current behavior" and "Typora guide" at bottom.
+- **Flat settings**: Settings organized into 5 feature sections (passive, orphan, wiki, share, restructure) with section headers. Icon settings at bottom with inline preview.
 - **Ribbon icons**: Always create all 3 icons, use `display: none` to hide restructure when disabled. Toggle in settings shows/hides instantly.
 
 ### Obsidian API
