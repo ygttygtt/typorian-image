@@ -36,11 +36,9 @@ type LocaleKey =
   | 'orphan.repair'
   | 'orphan.repairAll'
   | 'orphan.repairing'
-  | 'orphan.repairFixed'
   | 'orphan.repairFixedBroken'
   | 'orphan.repairFixedWiki'
   | 'orphan.repairFixedBoth'
-  | 'orphan.repairAllFixed'
   | 'orphan.repairAllFixedBroken'
   | 'orphan.repairAllFixedWiki'
   | 'orphan.repairAllFixedBoth'
@@ -79,9 +77,6 @@ type LocaleKey =
   | 'restructure.success'
   | 'restructure.warning'
   | 'restructure.scanning'
-  | 'orphan.wikiConverted'
-  | 'orphan.wikiNone'
-  | 'orphan.repairAllWikiConverted'
   | 'share.openFolder'
   | 'share.openFolder.desc'
   | 'share.selectFolder'
@@ -135,11 +130,9 @@ const zh: Record<LocaleKey, string> = {
   'orphan.repair': '修复当前',
   'orphan.repairAll': '全局修复',
   'orphan.repairing': '正在修复失效链接...',
-  'orphan.repairFixed': '已修复 {count} 处失效链接，正在重新扫描...',
   'orphan.repairFixedBroken': '已修复 {count} 处失效链接，正在重新扫描...',
   'orphan.repairFixedWiki': '已转换 {count} 处 Wiki 链接，正在重新扫描...',
   'orphan.repairFixedBoth': '已修复 {broken} 处失效链接、转换 {wiki} 处 Wiki 链接，正在重新扫描...',
-  'orphan.repairAllFixed': '已扫描 {scanned} 篇笔记，修复 {fixed} 处失效链接。',
   'orphan.repairAllFixedBroken': '已扫描 {scanned} 篇笔记，修复 {count} 处失效链接。',
   'orphan.repairAllFixedWiki': '已扫描 {scanned} 篇笔记，转换 {count} 处 Wiki 链接。',
   'orphan.repairAllFixedBoth': '已扫描 {scanned} 篇笔记，修复 {broken} 处失效链接、转换 {wiki} 处 Wiki 链接。',
@@ -178,9 +171,6 @@ const zh: Record<LocaleKey, string> = {
   'restructure.success': '重构完成，文件已复制至 {path}',
   'restructure.warning': '警告: 此操作将在 Vault 根目录创建 _Restructured_Vault/ 沙盒目录',
   'restructure.scanning': '正在扫描 Vault...',
-  'orphan.wikiConverted': '已转换 {count} 处 Wiki 链接',
-  'orphan.wikiNone': '未发现 Wiki 图片链接',
-  'orphan.repairAllWikiConverted': '已扫描 {scanned} 篇笔记，转换 {count} 处 Wiki 链接',
   'share.openFolder': '导出后打开文件夹',
   'share.openFolder.desc': '导出完成后自动打开目标文件夹',
   'share.selectFolder': '选择导出路径',
@@ -236,11 +226,9 @@ const en: Record<LocaleKey, string> = {
   'orphan.repair': 'Current',
   'orphan.repairAll': 'All notes',
   'orphan.repairing': 'Repairing broken links...',
-  'orphan.repairFixed': 'Repaired {count} broken link(s). Rescanning...',
   'orphan.repairFixedBroken': 'Repaired {count} broken link(s). Rescanning...',
   'orphan.repairFixedWiki': 'Converted {count} wiki link(s). Rescanning...',
   'orphan.repairFixedBoth': 'Repaired {broken} broken link(s), converted {wiki} wiki link(s). Rescanning...',
-  'orphan.repairAllFixed': 'Scanned {scanned} notes, repaired {fixed} broken link(s).',
   'orphan.repairAllFixedBroken': 'Scanned {scanned} notes, repaired {count} broken link(s).',
   'orphan.repairAllFixedWiki': 'Scanned {scanned} notes, converted {count} wiki link(s).',
   'orphan.repairAllFixedBoth': 'Scanned {scanned} notes, repaired {broken} broken link(s), converted {wiki} wiki link(s).',
@@ -279,9 +267,6 @@ const en: Record<LocaleKey, string> = {
   'restructure.success': 'Restructure complete, files copied to {path}',
   'restructure.warning': 'Warning: This will create a _Restructured_Vault/ sandbox directory at vault root',
   'restructure.scanning': 'Scanning vault...',
-  'orphan.wikiConverted': 'Converted {count} wiki link(s)',
-  'orphan.wikiNone': 'No wiki image links found',
-  'orphan.repairAllWikiConverted': 'Scanned {scanned} notes, converted {count} wiki link(s)',
   'share.openFolder': 'Open folder after export',
   'share.openFolder.desc': 'Automatically open the target folder after export',
   'share.selectFolder': 'Select export path',

@@ -1,4 +1,4 @@
-import { App, TFile, Notice, normalizePath } from 'obsidian';
+import { App, TFile, normalizePath } from 'obsidian';
 import { EditorView } from '@codemirror/view';
 import { IMAGE_EXTENSIONS } from './orphan-types';
 import { extractCodeBlockRanges, isInsideCodeBlock, Range } from './code-block-filter';
@@ -41,7 +41,7 @@ export class BrokenLinkRepairer {
 
   /**
    * Repair broken image links in the active note (via EditorView).
-   * Returns the number of links repaired, or -1 if no active note.
+   * Returns repair counts (broken + wiki), or null if no active note.
    */
   async repair(view: EditorView): Promise<RepairResult | null> {
     const activeFile = this.getActiveFile();
