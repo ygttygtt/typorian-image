@@ -40,6 +40,61 @@ export class BrokenLinkRepairer {
   ) {}
 
   /**
+   * Try to resolve a wiki link path to a TFile using multiple strategies.
+   * Returns the resolved TFile if found and is an image, null otherwise.
+   */
+  private tryResolveWikiLink(
+    rawPath: string,
+    sourcePath: string,
+    noteDir: string,
+    vaultImages: Map<string, TFile[]>
+  ): TFile | null {
+    // Primary: Obsidian API
+    let resolved: TFile | null = this.app.metadataCache.getFirstLinkpathDest(rawPath, sourcePath);
+
+    // Fallback 1: manual attachment folder
+    if (!resolved && this.settings?.manualAttachmentFolder) {
+      const manualPath = normalizePath(`${this.settings.manualAttachmentFolder}/${rawPath}`);
+      const manualFile = this.app.vault.getAbstractFileByPath(manualPath);
+      if (manualFile instanceof TFile && IMAGE_EXTENSIONS.has(manualFile.extension.toLowerCase())) {
+        resolved = manualFile;
+      }
+    }
+
+    // Fallback 2: Obsidian's configured attachment folder
+    if (!resolved) {
+      try {
+        const attachmentFolder = (this.app.vault as any).getConfig?.('attachmentFolderPath');
+        if (attachmentFolder && typeof attachmentFolder === 'string') {
+          const attachPath = normalizePath(`${attachmentFolder}/${rawPath}`);
+          const attachFile = this.app.vault.getAbstractFileByPath(attachPath);
+          if (attachFile instanceof TFile && IMAGE_EXTENSIONS.has(attachFile.extension.toLowerCase())) {
+            resolved = attachFile;
+          }
+        }
+      } catch { /* skip */ }
+    }
+
+    if (resolved && IMAGE_EXTENSIONS.has(resolved.extension.toLowerCase())) {
+      return resolved;
+    }
+
+    // Fallback 3: vault-wide fuzzy search
+    const fileName = rawPath.split('/').pop() || rawPath;
+    const ext = fileName.split('.').pop()?.toLowerCase();
+    if (ext && IMAGE_EXTENSIONS.has(ext)) {
+      const found = this.searchVault(vaultImages, fileName, noteDir);
+      if (found) {
+        const resolvedPath = this.resolveRelativePath(noteDir, found);
+        const file = this.app.vault.getAbstractFileByPath(normalizePath(resolvedPath));
+        if (file instanceof TFile) return file;
+      }
+    }
+
+    return null;
+  }
+
+  /**
    * Repair broken image links in the active note (via EditorView).
    * Returns repair counts (broken + wiki), or null if no active note.
    */
@@ -50,10 +105,10 @@ export class BrokenLinkRepairer {
     const content = view.state.doc.toString();
     const noteDir = activeFile.parent?.path ?? '';
 
-    const broken = this.findBrokenLinks(content, noteDir, activeFile.path);
+    const vaultImages = this.buildVaultImageIndex();
+    const broken = this.findBrokenLinks(content, noteDir, activeFile.path, vaultImages);
     if (broken.length === 0) return { brokenFixed: 0, wikiConverted: 0, total: 0 };
 
-    const vaultImages = this.buildVaultImageIndex();
     const replacements = this.computeReplacements(broken, vaultImages, noteDir);
 
     if (replacements.length > 0) {
@@ -85,7 +140,7 @@ export class BrokenLinkRepairer {
       const content = await this.app.vault.read(mdFile);
       const noteDir = mdFile.parent?.path ?? '';
 
-      const broken = this.findBrokenLinks(content, noteDir, mdFile.path);
+      const broken = this.findBrokenLinks(content, noteDir, mdFile.path, vaultImages);
       if (broken.length === 0) {
         scanned++;
         continue;
@@ -170,36 +225,8 @@ export class BrokenLinkRepairer {
         const rawPath = match[1].trim();
         if (!rawPath || rawPath.startsWith('http')) continue;
 
-        let resolved: TFile | null = this.app.metadataCache.getFirstLinkpathDest(rawPath, sourcePath);
-        if (!resolved && this.settings?.manualAttachmentFolder) {
-          const manualPath = normalizePath(`${this.settings.manualAttachmentFolder}/${rawPath}`);
-          const manualFile = this.app.vault.getAbstractFileByPath(manualPath);
-          if (manualFile instanceof TFile && IMAGE_EXTENSIONS.has(manualFile.extension.toLowerCase())) {
-            resolved = manualFile;
-          }
-        }
-        if (!resolved) {
-          try {
-            const attachmentFolder = (this.app.vault as any).getConfig?.('attachmentFolderPath');
-            if (attachmentFolder && typeof attachmentFolder === 'string') {
-              const attachPath = normalizePath(`${attachmentFolder}/${rawPath}`);
-              const attachFile = this.app.vault.getAbstractFileByPath(attachPath);
-              if (attachFile instanceof TFile && IMAGE_EXTENSIONS.has(attachFile.extension.toLowerCase())) {
-                resolved = attachFile;
-              }
-            }
-          } catch { /* skip */ }
-        }
-
-        if (resolved && IMAGE_EXTENSIONS.has(resolved.extension.toLowerCase())) continue;
-
-        // Also try vault search for the filename
-        const fileName = rawPath.split('/').pop() || rawPath;
-        const ext = fileName.split('.').pop()?.toLowerCase();
-        if (ext && IMAGE_EXTENSIONS.has(ext)) {
-          const found = this.searchVault(vaultImages, fileName, noteDir);
-          if (found) continue;
-        }
+        const resolved = this.tryResolveWikiLink(rawPath, sourcePath, noteDir, vaultImages);
+        if (resolved) continue;
 
         const line = content.substring(0, match.index).split('\n').length;
         unresolvable.push({ rawLink: match[0], rawPath, isWiki: true, line });
@@ -212,7 +239,7 @@ export class BrokenLinkRepairer {
   /**
    * Find all broken image links in content relative to noteDir.
    */
-  private findBrokenLinks(content: string, noteDir: string, sourcePath: string): BrokenMatch[] {
+  private findBrokenLinks(content: string, noteDir: string, sourcePath: string, vaultImages?: Map<string, TFile[]>): BrokenMatch[] {
     const broken: BrokenMatch[] = [];
     let match: RegExpExecArray | null;
 
@@ -259,7 +286,7 @@ export class BrokenLinkRepairer {
     }
 
     if (this.settings?.enableWikiLinkConversion) {
-      const wikiMatches = this.findWikiLinks(content, noteDir, sourcePath, codeRanges);
+      const wikiMatches = this.findWikiLinks(content, noteDir, sourcePath, codeRanges, vaultImages);
       broken.push(...wikiMatches);
     }
 
@@ -273,8 +300,10 @@ export class BrokenLinkRepairer {
     content: string,
     noteDir: string,
     sourcePath: string,
-    codeRanges: Range[]
+    codeRanges: Range[],
+    vaultImages?: Map<string, TFile[]>
   ): BrokenMatch[] {
+    const index = vaultImages ?? this.buildVaultImageIndex();
     const matches: BrokenMatch[] = [];
     let match: RegExpExecArray | null;
 
@@ -286,40 +315,10 @@ export class BrokenLinkRepairer {
       if (!rawPath) continue;
       if (rawPath.startsWith('http://') || rawPath.startsWith('https://')) continue;
 
-      // Primary resolution: Obsidian API
-      let resolved: TFile | null = this.app.metadataCache.getFirstLinkpathDest(rawPath, sourcePath);
+      const resolved = this.tryResolveWikiLink(rawPath, sourcePath, noteDir, index);
+      if (!resolved) continue;
 
-      // Fallback 1: manual attachment folder from settings
-      if (!resolved && this.settings?.manualAttachmentFolder) {
-        const manualPath = normalizePath(`${this.settings.manualAttachmentFolder}/${rawPath}`);
-        const manualFile = this.app.vault.getAbstractFileByPath(manualPath);
-        if (manualFile instanceof TFile && IMAGE_EXTENSIONS.has(manualFile.extension.toLowerCase())) {
-          resolved = manualFile;
-        }
-      }
-
-      // Fallback 2: Obsidian's configured attachment folder
-      if (!resolved) {
-        try {
-          const attachmentFolder = (this.app.vault as any).getConfig?.('attachmentFolderPath');
-          if (attachmentFolder && typeof attachmentFolder === 'string') {
-            const attachPath = normalizePath(`${attachmentFolder}/${rawPath}`);
-            const attachFile = this.app.vault.getAbstractFileByPath(attachPath);
-            if (attachFile instanceof TFile && IMAGE_EXTENSIONS.has(attachFile.extension.toLowerCase())) {
-              resolved = attachFile;
-            }
-          }
-        } catch {
-          // getConfig not available, skip
-        }
-      }
-
-      if (!resolved || !IMAGE_EXTENSIONS.has(resolved.extension.toLowerCase())) continue;
-
-      const resolvedPath = resolved.path;
-
-      // Compute relative path from note directory
-      const cleanedPath = this.computeRelativePath(noteDir, resolvedPath);
+      const cleanedPath = this.computeRelativePath(noteDir, resolved.path);
       const fileName = this.extractFileName(cleanedPath);
       if (!fileName) continue;
 
