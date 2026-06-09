@@ -170,7 +170,8 @@ export class TyporianSettingTab extends PluginSettingTab {
 
     for (const { key, labelKey, category } of iconCategories) {
       const presets = ICON_PRESETS[category] || [];
-      const currentIcon = (this.plugin.settings as any)[key] || presets[0];
+      const settingsMap = this.plugin.settings as unknown as Record<string, string>;
+      const currentIcon = settingsMap[key as string] || presets[0];
       const setting = new Setting(containerEl)
         .setName(t(labelKey as any));
 
@@ -189,7 +190,7 @@ export class TyporianSettingTab extends PluginSettingTab {
         }
         dropdown.setValue(currentIcon);
         dropdown.onChange(async (value) => {
-          (this.plugin.settings as any)[key] = value;
+          (this.plugin.settings as unknown as Record<string, string>)[key as string] = value;
           await this.plugin.saveSettings();
           this.plugin.refreshRibbonIcons();
           preview.innerHTML = getIconSvg(value);
