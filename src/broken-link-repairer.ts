@@ -1,6 +1,6 @@
 import { App, TFile, normalizePath } from 'obsidian';
 import { EditorView } from '@codemirror/view';
-import { IMAGE_EXTENSIONS } from './orphan-types';
+import { IMAGE_EXTENSIONS, UnresolvableLink } from './orphan-types';
 import { extractCodeBlockRanges, isInsideCodeBlock, Range } from './code-block-filter';
 import { TyporianSettings } from './settings';
 
@@ -111,6 +111,102 @@ export class BrokenLinkRepairer {
     }
 
     return { scanned, brokenFixed, wikiConverted, total: brokenFixed + wikiConverted };
+  }
+
+  /**
+   * Find image links in content that cannot be resolved to any vault file.
+   * Unlike findBrokenLinks (which returns repairable links), this returns
+   * links that are truly unresolvable — the images may be lost or corrupted.
+   */
+  findUnresolvableLinks(
+    content: string,
+    noteDir: string,
+    sourcePath: string
+  ): UnresolvableLink[] {
+    const unresolvable: UnresolvableLink[] = [];
+    const codeRanges = (!this.settings || this.settings.scanCodeBlocks)
+      ? [] : extractCodeBlockRanges(content);
+
+    const vaultImages = this.buildVaultImageIndex();
+
+    // Check markdown image links
+    MD_IMAGE_REGEX.lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = MD_IMAGE_REGEX.exec(content)) !== null) {
+      if (codeRanges.length > 0 && isInsideCodeBlock(match.index, codeRanges)) continue;
+      const rawPath = match[2];
+      if (rawPath.startsWith('http://') || rawPath.startsWith('https://')) continue;
+
+      const cleanedPath = this.cleanPath(rawPath);
+      const fileName = this.extractFileName(cleanedPath);
+      if (!fileName) continue;
+
+      // Try direct resolution
+      const resolvedPath = this.resolveRelativePath(noteDir, cleanedPath);
+      const existing = this.app.vault.getAbstractFileByPath(normalizePath(resolvedPath));
+      if (existing instanceof TFile && IMAGE_EXTENSIONS.has(existing.extension.toLowerCase())) continue;
+
+      // Try encoded
+      if (cleanedPath.includes(' ')) {
+        const enc = this.resolveRelativePath(noteDir, cleanedPath.replace(/ /g, '%20'));
+        const encFile = this.app.vault.getAbstractFileByPath(normalizePath(enc));
+        if (encFile instanceof TFile && IMAGE_EXTENSIONS.has(encFile.extension.toLowerCase())) continue;
+      }
+
+      // Try vault search (includes fuzzy matching)
+      const found = this.searchVault(vaultImages, fileName, noteDir);
+      if (found) continue; // repairable via vault search
+
+      // Truly unresolvable
+      const line = content.substring(0, match.index).split('\n').length;
+      unresolvable.push({ rawLink: match[0], rawPath, isWiki: false, line });
+    }
+
+    // Check wiki links (if enabled)
+    if (this.settings?.enableWikiLinkConversion) {
+      WIKI_EMBED_REGEX.lastIndex = 0;
+      while ((match = WIKI_EMBED_REGEX.exec(content)) !== null) {
+        if (codeRanges.length > 0 && isInsideCodeBlock(match.index, codeRanges)) continue;
+        const rawPath = match[1].trim();
+        if (!rawPath || rawPath.startsWith('http')) continue;
+
+        let resolved: TFile | null = this.app.metadataCache.getFirstLinkpathDest(rawPath, sourcePath);
+        if (!resolved && this.settings?.manualAttachmentFolder) {
+          const manualPath = normalizePath(`${this.settings.manualAttachmentFolder}/${rawPath}`);
+          const manualFile = this.app.vault.getAbstractFileByPath(manualPath);
+          if (manualFile instanceof TFile && IMAGE_EXTENSIONS.has(manualFile.extension.toLowerCase())) {
+            resolved = manualFile;
+          }
+        }
+        if (!resolved) {
+          try {
+            const attachmentFolder = (this.app.vault as any).getConfig?.('attachmentFolderPath');
+            if (attachmentFolder && typeof attachmentFolder === 'string') {
+              const attachPath = normalizePath(`${attachmentFolder}/${rawPath}`);
+              const attachFile = this.app.vault.getAbstractFileByPath(attachPath);
+              if (attachFile instanceof TFile && IMAGE_EXTENSIONS.has(attachFile.extension.toLowerCase())) {
+                resolved = attachFile;
+              }
+            }
+          } catch { /* skip */ }
+        }
+
+        if (resolved && IMAGE_EXTENSIONS.has(resolved.extension.toLowerCase())) continue;
+
+        // Also try vault search for the filename
+        const fileName = rawPath.split('/').pop() || rawPath;
+        const ext = fileName.split('.').pop()?.toLowerCase();
+        if (ext && IMAGE_EXTENSIONS.has(ext)) {
+          const found = this.searchVault(vaultImages, fileName, noteDir);
+          if (found) continue;
+        }
+
+        const line = content.substring(0, match.index).split('\n').length;
+        unresolvable.push({ rawLink: match[0], rawPath, isWiki: true, line });
+      }
+    }
+
+    return unresolvable;
   }
 
   /**

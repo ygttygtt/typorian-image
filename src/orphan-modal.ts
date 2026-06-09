@@ -1,6 +1,6 @@
 import { App, Modal, Notice, TFile, MarkdownView } from 'obsidian';
 import { OrphanDetector } from './orphan-detector';
-import { OrphanImageInfo } from './orphan-types';
+import { OrphanImageInfo, UnresolvableLink } from './orphan-types';
 import { BrokenLinkRepairer } from './broken-link-repairer';
 import { TyporianSettings } from './settings';
 import { getIconSvg } from './icon-utils';
@@ -57,6 +57,7 @@ export class OrphanImageModal extends Modal {
 
     this.renderHeader();
     this.renderList();
+    await this.renderBrokenLinksSection();
     this.renderFooter();
   }
 
@@ -157,6 +158,33 @@ export class OrphanImageModal extends Modal {
         if (evt.target === checkbox) return;
         checkbox.checked = !checkbox.checked;
         checkbox.dispatchEvent(new Event('change'));
+      });
+    }
+  }
+
+  private async renderBrokenLinksSection(): Promise<void> {
+    const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+    if (!view) return;
+
+    const file = view.file;
+    if (!file) return;
+
+    const content = await this.app.vault.read(file);
+    const noteDir = file.parent?.path ?? '';
+    const brokenLinks = this.repairer.findUnresolvableLinks(content, noteDir, file.path);
+
+    if (brokenLinks.length === 0) return;
+
+    const section = this.contentEl.createDiv({ cls: 'orphan-broken-section' });
+    section.createEl('h4', { text: t('orphan.brokenLinks') });
+    section.createEl('p', { text: t('orphan.brokenLinksDesc'), cls: 'orphan-broken-desc' });
+
+    for (const link of brokenLinks) {
+      const row = section.createDiv({ cls: 'orphan-broken-item' });
+      row.createSpan({ text: link.rawLink, cls: 'orphan-broken-link' });
+      row.createSpan({
+        text: t('orphan.brokenLinkLine', { line: link.line }),
+        cls: 'orphan-broken-line',
       });
     }
   }
