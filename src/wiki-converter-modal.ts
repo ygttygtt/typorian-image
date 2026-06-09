@@ -3,6 +3,7 @@ import { TyporianSettings } from './settings';
 import { getIconSvg } from './icon-utils';
 import { t } from './locale';
 import { IMAGE_EXTENSIONS } from './orphan-types';
+import { extractCodeBlockRanges, isInsideCodeBlock } from './code-block-filter';
 const WIKI_REGEX = /!\[\[([^\]|]+?)(?:\|([^\]]*?))?\]\]/g;
 
 interface WikiLinkItem {
@@ -258,10 +259,12 @@ export class WikiConverterModal extends Modal {
 
     for (const mdFile of files) {
       const content = await this.app.vault.read(mdFile);
+      const codeRanges = this.settings.scanCodeBlocks ? [] : extractCodeBlockRanges(content);
       let match: RegExpExecArray | null;
       WIKI_REGEX.lastIndex = 0;
 
       while ((match = WIKI_REGEX.exec(content)) !== null) {
+        if (codeRanges.length > 0 && isInsideCodeBlock(match.index, codeRanges)) continue;
         const rawPath = match[1].trim();
         if (!rawPath || rawPath.startsWith('http')) continue;
 
