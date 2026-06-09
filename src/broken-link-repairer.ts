@@ -128,7 +128,8 @@ export class BrokenLinkRepairer {
         continue;
       }
 
-      // Fallback: try with spaces encoded as %20
+      // Fallback: try with spaces encoded as %20.
+      // If the encoded path resolves, the link is valid — leave it as-is.
       if (cleanedPath.includes(' ')) {
         const encodedCleaned = cleanedPath.replace(/ /g, '%20');
         const encodedResolved = this.resolveRelativePath(noteDir, encodedCleaned);
