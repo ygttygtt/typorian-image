@@ -87,7 +87,13 @@ type LocaleKey =
   | 'restructure.selected'
   | 'restructure.table.note'
   | 'restructure.table.assets'
-  | 'restructure.table.images';
+  | 'restructure.table.images'
+  | 'restructure.modeSandbox'
+  | 'restructure.modeOverwrite'
+  | 'restructure.modeSandboxDesc'
+  | 'restructure.modeOverwriteDesc'
+  | 'restructure.overwriteWarning'
+  | 'restructure.orphanBlock';
 
 const zh: Record<LocaleKey, string> = {
   'settings.namingStrategy.name': '图片命名策略',
@@ -185,6 +191,12 @@ const zh: Record<LocaleKey, string> = {
   'restructure.table.note': '文档',
   'restructure.table.assets': '目标路径',
   'restructure.table.images': '图片数',
+  'restructure.modeSandbox': '沙箱模式',
+  'restructure.modeOverwrite': '覆盖模式',
+  'restructure.modeSandboxDesc': '生成重构副本到 _Restructured_Vault/ 目录，不影响原文件',
+  'restructure.modeOverwriteDesc': '直接重构原文件（需确认，有无主图片时不可用）',
+  'restructure.overwriteWarning': '警告：覆盖模式将直接修改原文件，此操作不可撤销！',
+  'restructure.orphanBlock': '检测到无主图片，请先清理后再执行覆盖重构。',
 };
 
 const en: Record<LocaleKey, string> = {
@@ -284,6 +296,12 @@ const en: Record<LocaleKey, string> = {
   'restructure.table.note': 'Note',
   'restructure.table.assets': 'Target Path',
   'restructure.table.images': 'Images',
+  'restructure.modeSandbox': 'Sandbox',
+  'restructure.modeOverwrite': 'Overwrite',
+  'restructure.modeSandboxDesc': 'Generate restructured copy in _Restructured_Vault/ without touching originals',
+  'restructure.modeOverwriteDesc': 'Restructure files in-place (requires confirmation, blocked if orphan images exist)',
+  'restructure.overwriteWarning': 'Warning: Overwrite mode will modify original files. This cannot be undone!',
+  'restructure.orphanBlock': 'Orphan images detected. Please clean up orphan images before overwrite restructure.',
 };
 
 let currentLocale: 'zh' | 'en' = 'en';

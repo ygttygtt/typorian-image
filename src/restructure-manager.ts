@@ -35,7 +35,7 @@ export class RestructureManager {
     const processedImages = new Set<string>();
 
     for (const mdFile of mdFiles) {
-      const noteDir = mdFile.parent?.path ?? '';
+      const noteDir = (mdFile.parent?.path ?? '').replace(/^\/+$/, '');
       const targetNoteDir = noteDir ? `${this.sandboxDir}/${noteDir}` : this.sandboxDir;
 
       const content = await this.app.vault.read(mdFile);
@@ -101,7 +101,7 @@ export class RestructureManager {
       if (!(sourceFile instanceof TFile)) continue;
 
       const content = await this.app.vault.read(sourceFile);
-      const noteDir = sourceFile.parent?.path ?? '';
+      const noteDir = (sourceFile.parent?.path ?? '').replace(/^\/+$/, '');
       const targetNoteDir = noteDir ? `${this.sandboxDir}/${noteDir}` : this.sandboxDir;
 
       let newContent = content;
@@ -144,12 +144,89 @@ export class RestructureManager {
     }
   }
 
+  /**
+   * Apply overwrite: restructure in-place, then delete originals.
+   * WARNING: This modifies the original vault structure.
+   */
+  async applyOverwrite(plan: RestructurePlan, selectedPaths: Set<string>): Promise<number> {
+    let processed = 0;
+
+    const noteEntries = plan.entries.filter(
+      (e) => e.type === 'note' && selectedPaths.has(e.sourcePath)
+    );
+
+    for (const entry of noteEntries) {
+      const sourceFile = this.app.vault.getAbstractFileByPath(entry.sourcePath);
+      if (!(sourceFile instanceof TFile)) continue;
+
+      const content = await this.app.vault.read(sourceFile);
+      const noteDir = (sourceFile.parent?.path ?? '').replace(/^\/+$/, '');
+
+      // Rewrite image links to new .assets/ paths
+      let newContent = content;
+      const replacements: Array<{ from: number; to: number; insert: string }> = [];
+      let match: RegExpExecArray | null;
+      MD_IMAGE_REGEX.lastIndex = 0;
+
+      while ((match = MD_IMAGE_REGEX.exec(content)) !== null) {
+        const rawPath = match[2];
+        if (rawPath.startsWith('http://') || rawPath.startsWith('https://')) continue;
+
+        const fileName = this.extractFileName(rawPath);
+        const newRelPath = `${sourceFile.basename}.assets/${fileName}`;
+        replacements.push({
+          from: match.index,
+          to: match.index + match[0].length,
+          insert: `![${match[1]}](${newRelPath})`,
+        });
+      }
+
+      replacements.sort((a, b) => b.from - a.from);
+      for (const r of replacements) {
+        newContent = newContent.substring(0, r.from) + r.insert + newContent.substring(r.to);
+      }
+
+      // Create .assets directory next to the note
+      const assetsDir = noteDir
+        ? `${noteDir}/${sourceFile.basename}.assets`
+        : `${sourceFile.basename}.assets`;
+      await this.ensureDir(assetsDir);
+
+      // Copy images to the new .assets directory
+      const imageEntries = plan.entries.filter(
+        (e) => e.type === 'image' && e.sourcePath.startsWith(noteDir || '')
+      );
+      for (const imgEntry of imageEntries) {
+        const imgFile = this.app.vault.getAbstractFileByPath(imgEntry.sourcePath);
+        if (!(imgFile instanceof TFile)) continue;
+        // Skip if already in the correct .assets directory
+        if (imgFile.parent?.path === assetsDir) continue;
+
+        const data = await this.app.vault.readBinary(imgFile);
+        const targetPath = normalizePath(`${assetsDir}/${imgFile.name}`);
+        // Check if target already exists
+        const existing = this.app.vault.getAbstractFileByPath(targetPath);
+        if (!existing) {
+          await this.app.vault.createBinary(targetPath, data);
+        }
+      }
+
+      // Update the note content with new image paths
+      await this.app.vault.modify(sourceFile, newContent);
+      processed++;
+    }
+
+    return processed;
+  }
+
   private resolveImagePath(noteDir: string, rawPath: string): string | null {
     let path = rawPath.replace(/\\/g, '/');
     path = path.replace(/^[A-Za-z]:\//, '');
     path = path.replace(/^\/+/, '');
     path = path.replace(/%20/g, ' ');
     if (path.startsWith('./')) path = path.substring(2);
+    // Normalize noteDir: treat '/' same as '' (root)
+    noteDir = noteDir.replace(/^\/+$/, '');
     return noteDir ? `${noteDir}/${path}` : path;
   }
 

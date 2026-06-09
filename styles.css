@@ -203,6 +203,19 @@
   margin-right: 8px;
 }
 
+.restructure-warning-overwrite {
+  color: var(--text-error) !important;
+  font-weight: 600;
+}
+
+/* Make restructure modal resizable */
+.typorian-restructure-modal .modal {
+  resize: both;
+  overflow: auto;
+  min-width: 600px;
+  min-height: 400px;
+}
+
 /* Restructure Table */
 .restructure-table-container {
   max-height: 400px;
@@ -214,6 +227,7 @@
 
 .restructure-table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: 0.9em;
 }
@@ -232,6 +246,9 @@
   padding: 5px 10px;
   border-bottom: 1px solid var(--background-modifier-border);
   vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .restructure-th-check,
@@ -240,20 +257,24 @@
   text-align: center;
 }
 
+.restructure-th-note,
+.restructure-td-note {
+  width: 30%;
+  font-weight: 500;
+}
+
+.restructure-th-assets,
+.restructure-td-assets {
+  width: 50%;
+  font-family: var(--font-monospace);
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
 .restructure-th-images,
 .restructure-td-images {
   width: 80px;
   text-align: center;
-}
-
-.restructure-td-note {
-  font-weight: 500;
-}
-
-.restructure-td-assets {
-  font-family: var(--font-monospace);
-  font-size: 0.85em;
-  color: var(--text-muted);
 }
 
 .restructure-row-empty {
@@ -262,8 +283,6 @@
 
 .restructure-no-images {
   font-size: 0.8em;
-  color: var(--text-faint);
-  font-style: italic;
 }
 
 /* Wiki toggle in orphan modal footer — inline, no button wrapper */

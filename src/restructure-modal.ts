@@ -20,18 +20,13 @@ export class RestructureModal extends Modal {
 
   async onOpen(): Promise<void> {
     const { contentEl } = this;
+    this.containerEl.addClass('typorian-restructure-modal');
     this.titleEl.setText(t('restructure.title'));
 
     contentEl.createEl('p', { text: t('restructure.scanning'), cls: 'orphan-status' });
 
     this.plan = await this.manager.preview();
     contentEl.empty();
-
-    // Warning
-    contentEl.createEl('p', {
-      text: t('restructure.warning'),
-      cls: 'restructure-warning',
-    });
 
     // Header with select-all and summary
     const header = contentEl.createDiv({ cls: 'orphan-header' });
@@ -116,29 +111,86 @@ export class RestructureModal extends Modal {
     const cancelBtn = leftGroup.createEl('button', { text: t('restructure.cancel') });
     cancelBtn.addEventListener('click', () => this.close());
 
+    // Mode toggle (sandbox / overwrite)
+    let isOverwriteMode = false;
+    const modeToggleEl = leftGroup.createDiv({ cls: 'orphan-wiki-toggle' });
+    modeToggleEl.createSpan({ text: t('restructure.modeOverwrite'), cls: 'orphan-wiki-toggle-label' });
+    const modeTrack = modeToggleEl.createDiv({ cls: 'orphan-wiki-toggle-track' });
+    modeTrack.createDiv({ cls: 'orphan-wiki-toggle-thumb' });
+
+    // Warning text (changes based on mode)
+    const warningEl = contentEl.createEl('p', {
+      text: t('restructure.modeSandboxDesc'),
+      cls: 'restructure-warning',
+    });
+    // Move warning before footer
+    contentEl.insertBefore(warningEl, footer);
+
+    // Confirm input (only visible in overwrite mode)
     const confirmInput = rightGroup.createEl('input', {
       type: 'text',
       placeholder: t('restructure.confirm'),
       cls: 'restructure-confirm-input',
     });
+    confirmInput.style.display = 'none';
 
     const applyBtn = rightGroup.createEl('button', {
       text: t('restructure.apply'),
       cls: 'mod-warning',
     });
-    applyBtn.disabled = true;
+    applyBtn.disabled = this.selectedNotes.size === 0;
+
+    // Update UI based on mode
+    const updateMode = () => {
+      if (isOverwriteMode) {
+        confirmInput.style.display = '';
+        applyBtn.disabled = confirmInput.value !== 'confirm' || this.selectedNotes.size === 0;
+        warningEl.setText(t('restructure.overwriteWarning'));
+        warningEl.addClass('restructure-warning-overwrite');
+      } else {
+        confirmInput.style.display = 'none';
+        applyBtn.disabled = this.selectedNotes.size === 0;
+        warningEl.setText(t('restructure.modeSandboxDesc'));
+        warningEl.removeClass('restructure-warning-overwrite');
+      }
+    };
+
+    modeToggleEl.addEventListener('click', () => {
+      isOverwriteMode = !isOverwriteMode;
+      modeTrack.classList.toggle('is-on', isOverwriteMode);
+      updateMode();
+    });
 
     confirmInput.addEventListener('input', () => {
-      applyBtn.disabled = confirmInput.value !== 'confirm' || this.selectedNotes.size === 0;
+      if (isOverwriteMode) {
+        applyBtn.disabled = confirmInput.value !== 'confirm' || this.selectedNotes.size === 0;
+      }
     });
 
     applyBtn.addEventListener('click', async () => {
       if (!this.plan || this.selectedNotes.size === 0) return;
+
+      // Overwrite mode: check for orphan images
+      if (isOverwriteMode) {
+        const { OrphanDetector } = await import('./orphan-detector');
+        const detector = new OrphanDetector(this.app);
+        const orphans = await detector.scan();
+        if (orphans.length > 0) {
+          new Notice(t('restructure.orphanBlock'));
+          return;
+        }
+      }
+
       applyBtn.disabled = true;
       applyBtn.textContent = '...';
       try {
-        await this.manager.apply(this.plan, this.selectedNotes);
-        new Notice(t('restructure.success', { path: '_Restructured_Vault/' }));
+        if (isOverwriteMode) {
+          const processed = await this.manager.applyOverwrite(this.plan, this.selectedNotes);
+          new Notice(t('restructure.success', { path: 'original vault' }));
+        } else {
+          await this.manager.apply(this.plan, this.selectedNotes);
+          new Notice(t('restructure.success', { path: '_Restructured_Vault/' }));
+        }
         this.close();
       } catch (err) {
         new Notice(String(err));
@@ -167,6 +219,7 @@ export class RestructureModal extends Modal {
   }
 
   onClose(): void {
+    this.containerEl.removeClass('typorian-restructure-modal');
     this.contentEl.empty();
   }
 }
