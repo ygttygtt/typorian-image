@@ -396,3 +396,30 @@
   white-space: nowrap;
   margin-left: 8px;
 }
+
+/* Wiki Converter Modal */
+.wiki-mode-group {
+  display: flex;
+  gap: 4px;
+  margin-right: 12px;
+}
+
+.wiki-mode-btn {
+  padding: 2px 8px;
+  font-size: 0.8em;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.wiki-mode-btn:hover {
+  background: var(--background-modifier-hover);
+}
+
+.wiki-mode-btn.is-active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+}
