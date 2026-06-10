@@ -107,17 +107,6 @@ export class OrphanImageModal extends Modal {
       this.updateCleanupButton();
     });
 
-    // Wiki conversion toggle
-    if (this.settings) {
-      const wikiToggleLabel = this.headerContainer.createEl('label', { cls: 'orphan-select-all-label' });
-      const wikiToggle = wikiToggleLabel.createEl('input', { type: 'checkbox' });
-      wikiToggle.checked = this.settings.enableWikiLinkConversion;
-      wikiToggleLabel.createSpan({ text: t('settings.wikiConversion.name') });
-      wikiToggle.addEventListener('change', () => {
-        this.settings!.enableWikiLinkConversion = wikiToggle.checked;
-      });
-    }
-
     this.updateSummary();
   }
 
@@ -220,6 +209,19 @@ export class OrphanImageModal extends Modal {
       cls: 'orphan-repair-btn',
     });
     refreshBtn.addEventListener('click', () => this.scanAndRender());
+
+    // Wiki conversion toggle switch
+    if (this.settings) {
+      const wikiToggleEl = leftGroup.createDiv({ cls: 'orphan-wiki-toggle' });
+      wikiToggleEl.createSpan({ text: t('settings.wikiConversion.name'), cls: 'orphan-wiki-toggle-label' });
+      const track = wikiToggleEl.createDiv({ cls: 'orphan-wiki-toggle-track' });
+      track.createDiv({ cls: 'orphan-wiki-toggle-thumb' });
+      if (this.settings.enableWikiLinkConversion) track.classList.add('is-on');
+      wikiToggleEl.addEventListener('click', () => {
+        this.settings!.enableWikiLinkConversion = !this.settings!.enableWikiLinkConversion;
+        track.classList.toggle('is-on');
+      });
+    }
 
     // Right group: repair + cleanup
     const rightGroup = footer.createDiv({ cls: 'orphan-footer-right' });
