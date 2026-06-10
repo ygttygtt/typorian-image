@@ -105,7 +105,8 @@ type LocaleKey =
   | 'settings.section.restructure'
   | 'settings.showWikiConverter.name'
   | 'settings.showWikiConverter.desc'
-  | 'settings.icons.wikiConverter';
+  | 'settings.icons.wikiConverter'
+  | 'wiki.broken';
 
 const zh: Record<LocaleKey, string> = {
   'settings.namingStrategy.name': '图片命名策略',
@@ -221,6 +222,7 @@ const zh: Record<LocaleKey, string> = {
   'settings.showWikiConverter.name': '显示 Wiki 转换工具',
   'settings.showWikiConverter.desc': '开启后，左侧栏将出现 Wiki 链接转换入口。',
   'settings.icons.wikiConverter': 'Wiki 转换按钮图标',
+  'wiki.broken': '条失效链接',
 };
 
 const en: Record<LocaleKey, string> = {
@@ -338,6 +340,7 @@ const en: Record<LocaleKey, string> = {
   'settings.showWikiConverter.name': 'Show Wiki converter tool',
   'settings.showWikiConverter.desc': 'When enabled, the Wiki link converter appears in the ribbon.',
   'settings.icons.wikiConverter': 'Wiki converter button icon',
+  'wiki.broken': 'broken link(s)',
 };
 
 let currentLocale: 'zh' | 'en' = 'en';

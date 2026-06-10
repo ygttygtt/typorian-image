@@ -425,3 +425,28 @@
   color: var(--text-on-accent);
   border-color: var(--interactive-accent);
 }
+
+/* Wiki broken items */
+.wiki-item-broken {
+  opacity: 0.7;
+}
+
+.wiki-broken-text {
+  color: var(--text-error);
+  text-decoration: line-through;
+}
+
+.wiki-broken-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-faint);
+  flex-shrink: 0;
+}
+
+.orphan-checkbox-placeholder {
+  width: 18px;
+  flex-shrink: 0;
+}

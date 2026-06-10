@@ -2,7 +2,7 @@ import { App, Modal, Notice, TFile, MarkdownView } from 'obsidian';
 import { TyporianSettings } from './settings';
 import { getIconSvg } from './icon-utils';
 import { t } from './locale';
-import { IMAGE_EXTENSIONS, UnresolvableLink } from './orphan-types';
+import { IMAGE_EXTENSIONS } from './orphan-types';
 import { extractCodeBlockRanges, isInsideCodeBlock } from './code-block-filter';
 import { PathUtils } from './path-utils';
 const WIKI_REGEX = /!\[\[([^\]|]+?)(?:\|([^\]]*?))?\]\]/g;
@@ -55,9 +55,6 @@ export class WikiConverterModal extends Modal {
       this.renderList();
     }
 
-    // Always check for broken links
-    await this.renderBrokenLinksSection();
-
     this.renderFooter();
   }
 
@@ -103,43 +100,109 @@ export class WikiConverterModal extends Modal {
 
     for (let i = 0; i < this.items.length; i++) {
       const item = this.items[i];
-      const row = this.listContainer.createDiv({ cls: 'orphan-item' });
-
-      // Checkbox
-      const checkbox = row.createEl('input', { type: 'checkbox', cls: 'orphan-checkbox' });
-      checkbox.checked = true;
-      this.checkboxes.set(i, checkbox);
-      checkbox.addEventListener('change', () => {
-        this.syncSelectAll();
-        this.updateConvertButton();
+      const isBroken = !item.resolvedFile;
+      const row = this.listContainer.createDiv({
+        cls: `orphan-item${isBroken ? ' wiki-item-broken' : ''}`,
       });
 
-      // Thumbnail
+      // Checkbox — only for resolvable items
+      if (!isBroken) {
+        const checkbox = row.createEl('input', { type: 'checkbox', cls: 'orphan-checkbox' });
+        checkbox.checked = true;
+        this.checkboxes.set(i, checkbox);
+        checkbox.addEventListener('change', () => {
+          this.syncSelectAll();
+          this.updateConvertButton();
+        });
+      } else {
+        // Placeholder for alignment
+        row.createDiv({ cls: 'orphan-checkbox-placeholder' });
+      }
+
+      // Thumbnail — only for resolvable
       if (item.resolvedFile) {
         const img = row.createEl('img', { cls: 'orphan-thumbnail' });
         img.src = this.app.vault.getResourcePath(item.resolvedFile);
         img.alt = item.rawPath;
+      } else {
+        // Placeholder icon for broken
+        const iconEl = row.createDiv({ cls: 'wiki-broken-icon' });
+        iconEl.innerHTML = getIconSvg('link-2-off');
       }
 
       // Info
       const info = row.createDiv({ cls: 'orphan-info' });
-      info.createDiv({ text: item.rawLink, cls: 'orphan-path' });
+      info.createDiv({
+        text: item.rawLink,
+        cls: `orphan-path${isBroken ? ' wiki-broken-text' : ''}`,
+      });
       info.createDiv({
         text: `${item.notePath.split('/').pop()}:${item.line}`,
         cls: 'orphan-size',
       });
 
-      // Click row to toggle
-      row.addEventListener('click', (evt) => {
-        if (evt.target === checkbox) return;
-        checkbox.checked = !checkbox.checked;
-        checkbox.dispatchEvent(new Event('change'));
+      // Action buttons
+      const actions = row.createDiv({ cls: 'orphan-actions' });
+
+      // Navigate to line button
+      const gotoBtn = actions.createEl('button', {
+        cls: 'orphan-locate-btn',
+        attr: { 'aria-label': t('orphan.locateNote'), title: t('orphan.locateNote') },
       });
+      gotoBtn.innerHTML = getIconSvg('file-text');
+      const notePath = item.notePath;
+      const lineNum = item.line;
+      gotoBtn.addEventListener('click', async (evt) => {
+        evt.stopPropagation();
+        const file = this.app.vault.getAbstractFileByPath(notePath);
+        if (!(file instanceof TFile)) return;
+        const leaf = this.app.workspace.getLeaf();
+        await leaf.openFile(file);
+        const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+        if (activeView) {
+          const editor = activeView.editor;
+          const line = Math.max(0, lineNum - 1);
+          editor.setCursor(line, 0);
+          editor.scrollIntoView({ from: { line, ch: 0 }, to: { line, ch: 0 } }, true);
+        }
+      });
+
+      // Delete button — for broken items
+      if (isBroken) {
+        const deleteBtn = actions.createEl('button', {
+          cls: 'orphan-locate-btn',
+          attr: { 'aria-label': t('orphan.removeLink'), title: t('orphan.removeLink') },
+        });
+        deleteBtn.innerHTML = getIconSvg('trash-2');
+        const rawLink = item.rawLink;
+        deleteBtn.addEventListener('click', async (evt) => {
+          evt.stopPropagation();
+          const file = this.app.vault.getAbstractFileByPath(notePath);
+          if (!(file instanceof TFile)) return;
+          const content = await this.app.vault.read(file);
+          const idx = content.indexOf(rawLink);
+          if (idx === -1) return;
+          const newContent = content.substring(0, idx) + content.substring(idx + rawLink.length);
+          await this.app.vault.modify(file, newContent);
+          await this.scanAndRender();
+        });
+      }
+
+      // Click row to toggle checkbox (only for resolvable)
+      if (!isBroken) {
+        row.addEventListener('click', (evt) => {
+          if (actions.contains(evt.target as Node)) return;
+          const cb = this.checkboxes.get(i);
+          if (!cb || evt.target === cb) return;
+          cb.checked = !cb.checked;
+          cb.dispatchEvent(new Event('change'));
+        });
+      }
     }
 
-    // All selected by default
+    // Set initial checkbox state
     this.checkboxes.forEach((cb) => { cb.checked = true; });
-    this.syncSelectAll();
+    if (this.selectAllCheckbox) this.selectAllCheckbox.checked = true;
     this.updateConvertButton();
   }
 
@@ -168,8 +231,14 @@ export class WikiConverterModal extends Modal {
     if (old) old.remove();
     const header = this.contentEl.querySelector('.orphan-header');
     if (header) {
+      const brokenCount = this.items.filter(i => !i.resolvedFile).length;
+      const resolvableCount = this.items.length - brokenCount;
+      let text = `${resolvableCount} ${t('wiki.summary')}`;
+      if (brokenCount > 0) {
+        text += ` · ${brokenCount} ${t('wiki.broken')}`;
+      }
       this.summaryEl = header.createSpan({
-        text: `${this.items.length} ${t('wiki.summary')}`,
+        text,
         cls: 'orphan-summary',
       });
     }
@@ -239,74 +308,6 @@ export class WikiConverterModal extends Modal {
     await this.scanAndRender();
   }
 
-  private async renderBrokenLinksSection(): Promise<void> {
-    const view = this.app.workspace.getActiveViewOfType(MarkdownView);
-    if (!view) return;
-    const file = view.file;
-    if (!file) return;
-
-    const content = await this.app.vault.read(file);
-    const noteDir = (file.parent?.path ?? '').replace(/^\/+$/, '');
-
-    // Create a temporary repairer to use findUnresolvableLinks
-    const { BrokenLinkRepairer } = await import('./broken-link-repairer');
-    const repairer = new BrokenLinkRepairer(this.app, this.settings);
-    const brokenLinks = repairer.findUnresolvableLinks(content, noteDir, file.path);
-
-    if (brokenLinks.length === 0) return;
-
-    const section = this.contentEl.createDiv({ cls: 'orphan-broken-section' });
-    section.createEl('h4', { text: t('orphan.brokenLinks') });
-    section.createEl('p', { text: t('orphan.brokenLinksDesc'), cls: 'orphan-broken-desc' });
-
-    for (const link of brokenLinks) {
-      const row = section.createDiv({ cls: 'orphan-broken-item' });
-      row.createSpan({ text: link.rawLink, cls: 'orphan-broken-link' });
-      row.createSpan({
-        text: t('orphan.brokenLinkLine', { line: link.line }),
-        cls: 'orphan-broken-line',
-      });
-
-      const actions = row.createDiv({ cls: 'orphan-actions' });
-
-      // Navigate to line button
-      const gotoBtn = actions.createEl('button', {
-        cls: 'orphan-locate-btn',
-        attr: { 'aria-label': t('orphan.locateNote'), title: t('orphan.locateNote') },
-      });
-      gotoBtn.innerHTML = getIconSvg('file-text');
-      gotoBtn.addEventListener('click', async (evt) => {
-        evt.stopPropagation();
-        const leaf = this.app.workspace.getLeaf();
-        await leaf.openFile(file);
-        // Scroll to line
-        const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
-        if (activeView) {
-          const editor = activeView.editor;
-          const line = Math.max(0, link.line - 1);
-          editor.setCursor(line, 0);
-          editor.scrollIntoView({ from: { line, ch: 0 }, to: { line, ch: 0 } }, true);
-        }
-      });
-
-      // Delete link button
-      const deleteBtn = actions.createEl('button', {
-        cls: 'orphan-locate-btn',
-        attr: { 'aria-label': t('orphan.removeLink'), title: t('orphan.removeLink') },
-      });
-      deleteBtn.innerHTML = getIconSvg('trash-2');
-      deleteBtn.addEventListener('click', async (evt) => {
-        evt.stopPropagation();
-        const fileContent = await this.app.vault.read(file);
-        const idx = fileContent.indexOf(link.rawLink);
-        if (idx === -1) return;
-        const newContent = fileContent.substring(0, idx) + fileContent.substring(idx + link.rawLink.length);
-        await this.app.vault.modify(file, newContent);
-        await this.scanAndRender();
-      });
-    }
-  }
-
   private async scanWikiLinks(mode: 'current' | 'all'): Promise<WikiLinkItem[]> {
     const items: WikiLinkItem[] = [];
 
@@ -329,6 +330,7 @@ export class WikiConverterModal extends Modal {
         const rawPath = match[1].trim();
         if (!rawPath || rawPath.startsWith('http')) continue;
 
+        // Try to resolve
         let resolved: TFile | null = this.app.metadataCache.getFirstLinkpathDest(rawPath, mdFile.path);
 
         // Fallback 1: manual attachment folder
@@ -350,7 +352,13 @@ export class WikiConverterModal extends Modal {
           } catch {}
         }
 
-        if (!resolved || !IMAGE_EXTENSIONS.has(resolved.extension.toLowerCase())) continue;
+        // Filter: only include if it looks like an image (has image extension, or resolved to image)
+        const ext = rawPath.split('.').pop()?.toLowerCase() || '';
+        const isImageExt = IMAGE_EXTENSIONS.has(ext);
+        const isResolvedImage = resolved && IMAGE_EXTENSIONS.has(resolved.extension.toLowerCase());
+
+        // Include if: resolved to image, OR has image extension (even if broken)
+        if (!isResolvedImage && !isImageExt) continue;
 
         const line = content.substring(0, match.index).split('\n').length;
         items.push({
@@ -359,7 +367,7 @@ export class WikiConverterModal extends Modal {
           alt: match[2] || '',
           notePath: mdFile.path,
           line,
-          resolvedFile: resolved,
+          resolvedFile: isResolvedImage ? resolved : null,
         });
       }
     }
