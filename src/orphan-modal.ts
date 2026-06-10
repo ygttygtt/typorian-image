@@ -107,6 +107,17 @@ export class OrphanImageModal extends Modal {
       this.updateCleanupButton();
     });
 
+    // Wiki conversion toggle
+    if (this.settings) {
+      const wikiToggleLabel = this.headerContainer.createEl('label', { cls: 'orphan-select-all-label' });
+      const wikiToggle = wikiToggleLabel.createEl('input', { type: 'checkbox' });
+      wikiToggle.checked = this.settings.enableWikiLinkConversion;
+      wikiToggleLabel.createSpan({ text: t('settings.wikiConversion.name') });
+      wikiToggle.addEventListener('change', () => {
+        this.settings!.enableWikiLinkConversion = wikiToggle.checked;
+      });
+    }
+
     this.updateSummary();
   }
 
