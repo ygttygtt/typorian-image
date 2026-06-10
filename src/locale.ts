@@ -108,7 +108,9 @@ type LocaleKey =
   | 'wiki.convertCurrent'
   | 'wiki.convertAll'
   | 'wiki.convertCurrentCount'
-  | 'wiki.convertAllCount';
+  | 'wiki.convertAllCount'
+  | 'wiki.cleanBroken'
+  | 'wiki.cleanBrokenDone';
 
 const zh: Record<LocaleKey, string> = {
   'settings.namingStrategy.name': '图片命名策略',
@@ -227,6 +229,8 @@ const zh: Record<LocaleKey, string> = {
   'wiki.convertAll': '转换全部笔记',
   'wiki.convertCurrentCount': '转换当前笔记 ({count} 条)',
   'wiki.convertAllCount': '转换全部笔记 ({count} 条)',
+  'wiki.cleanBroken': '清理失效链接',
+  'wiki.cleanBrokenDone': '已清理 {count} 条失效链接。',
 };
 
 const en: Record<LocaleKey, string> = {
@@ -347,6 +351,8 @@ const en: Record<LocaleKey, string> = {
   'wiki.convertAll': 'Convert All Notes',
   'wiki.convertCurrentCount': 'Convert Current Note ({count})',
   'wiki.convertAllCount': 'Convert All Notes ({count})',
+  'wiki.cleanBroken': 'Clean Broken Links',
+  'wiki.cleanBrokenDone': 'Cleaned {count} broken link(s).',
 };
 
 let currentLocale: 'zh' | 'en' = 'en';

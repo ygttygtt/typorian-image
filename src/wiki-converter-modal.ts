@@ -57,6 +57,7 @@ export class WikiConverterModal extends Modal {
     }
 
     this.renderFooter();
+    this.updateConvertButton();
   }
 
   private renderHeader(): void {
@@ -221,12 +222,17 @@ export class WikiConverterModal extends Modal {
     });
     refreshBtn.addEventListener('click', () => this.scanAndRender());
 
+    const cleanBrokenBtn = leftGroup.createEl('button', {
+      text: t('wiki.cleanBroken'),
+      cls: 'orphan-repair-btn',
+    });
+    cleanBrokenBtn.addEventListener('click', () => this.handleCleanBroken());
+
     const defaultText = this.scanMode === 'current' ? t('wiki.convertCurrent') : t('wiki.convertAll');
     this.convertButton = rightGroup.createEl('button', {
       text: defaultText,
       cls: 'mod-cta',
     });
-    this.convertButton.disabled = true;
     this.convertButton.addEventListener('click', () => this.handleConvert());
   }
 
@@ -257,7 +263,6 @@ export class WikiConverterModal extends Modal {
     if (!this.convertButton) return;
     let count = 0;
     this.checkboxes.forEach((cb) => { if (cb.checked) count++; });
-    this.convertButton.disabled = count === 0;
     if (this.scanMode === 'current') {
       this.convertButton.textContent = count > 0
         ? t('wiki.convertCurrentCount', { count })
@@ -272,7 +277,10 @@ export class WikiConverterModal extends Modal {
   private async handleConvert(): Promise<void> {
     const selected = new Set<number>();
     this.checkboxes.forEach((cb, i) => { if (cb.checked) selected.add(i); });
-    if (selected.size === 0) return;
+    if (selected.size === 0) {
+      new Notice(t('wiki.empty'));
+      return;
+    }
 
     // Group by note
     const byNote = new Map<string, WikiLinkItem[]>();
@@ -315,6 +323,50 @@ export class WikiConverterModal extends Modal {
     }
 
     new Notice(t('wiki.convertDone', { count: totalConverted }));
+    await this.scanAndRender();
+  }
+
+  private async handleCleanBroken(): Promise<void> {
+    const brokenItems = this.items.filter(item => !item.resolvedFile);
+    if (brokenItems.length === 0) {
+      new Notice(t('wiki.empty'));
+      return;
+    }
+
+    // Group by note
+    const byNote = new Map<string, WikiLinkItem[]>();
+    for (const item of brokenItems) {
+      if (!byNote.has(item.notePath)) byNote.set(item.notePath, []);
+      byNote.get(item.notePath)!.push(item);
+    }
+
+    let totalCleaned = 0;
+
+    for (const [notePath, noteItems] of byNote) {
+      const file = this.app.vault.getAbstractFileByPath(notePath);
+      if (!(file instanceof TFile)) continue;
+
+      const content = await this.app.vault.read(file);
+      let newContent = content;
+
+      // Sort by position descending to preserve offsets
+      const positions = noteItems.map((item) => ({
+        item,
+        pos: newContent.indexOf(item.rawLink),
+      })).filter((p) => p.pos !== -1);
+      positions.sort((a, b) => b.pos - a.pos);
+
+      for (const { item, pos } of positions) {
+        newContent = newContent.substring(0, pos) + newContent.substring(pos + item.rawLink.length);
+        totalCleaned++;
+      }
+
+      if (newContent !== content) {
+        await this.app.vault.modify(file, newContent);
+      }
+    }
+
+    new Notice(t('wiki.cleanBrokenDone', { count: totalCleaned }));
     await this.scanAndRender();
   }
 

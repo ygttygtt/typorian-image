@@ -364,10 +364,22 @@ export class OrphanImageModal extends Modal {
     });
     if (selectedPaths.length === 0) return;
 
+    const adapter = this.app.vault.adapter as any;
+    const basePath: string = adapter.basePath ?? '';
+    const sep = basePath.includes('\\') ? '\\' : '/';
+
     let trashed = 0;
     for (const path of selectedPaths) {
       const file = this.app.vault.getAbstractFileByPath(path);
-      if (file instanceof TFile) {
+      if (!(file instanceof TFile)) continue;
+
+      const fullPath = basePath + sep + file.path.replace(/\//g, sep);
+      try {
+        const { shell } = require('electron');
+        await shell.trashItem(fullPath);
+        trashed++;
+      } catch {
+        // Fallback: use Obsidian internal trash
         await this.app.vault.trash(file, false);
         trashed++;
       }
