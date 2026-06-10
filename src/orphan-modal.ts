@@ -213,7 +213,7 @@ export class OrphanImageModal extends Modal {
     // Wiki conversion toggle switch
     if (this.settings) {
       const wikiToggleEl = leftGroup.createDiv({ cls: 'orphan-wiki-toggle' });
-      wikiToggleEl.createSpan({ text: t('settings.wikiConversion.name'), cls: 'orphan-wiki-toggle-label' });
+      wikiToggleEl.createSpan({ text: t('wiki.toggleLabel'), cls: 'orphan-wiki-toggle-label' });
       const track = wikiToggleEl.createDiv({ cls: 'orphan-wiki-toggle-track' });
       track.createDiv({ cls: 'orphan-wiki-toggle-thumb' });
       if (this.settings.enableWikiLinkConversion) track.classList.add('is-on');
