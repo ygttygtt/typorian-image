@@ -409,14 +409,15 @@
   font-size: 0.85em;
   font-weight: 500;
   border: 1px solid var(--background-modifier-border);
-  border-radius: 6px;
-  background: transparent;
+  border-radius: 4px;
+  background: var(--interactive-normal);
+  color: var(--text-normal);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .wiki-mode-btn:hover {
-  background: var(--background-modifier-hover);
+  background: var(--interactive-hover);
 }
 
 .wiki-mode-btn.is-active {

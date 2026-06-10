@@ -2,7 +2,7 @@ import { App, Modal, Notice, TFile, MarkdownView } from 'obsidian';
 import { TyporianSettings } from './settings';
 import { getIconSvg } from './icon-utils';
 import { t } from './locale';
-import { IMAGE_EXTENSIONS } from './orphan-types';
+import { IMAGE_EXTENSIONS, UnresolvableLink } from './orphan-types';
 import { extractCodeBlockRanges, isInsideCodeBlock } from './code-block-filter';
 import { PathUtils } from './path-utils';
 const WIKI_REGEX = /!\[\[([^\]|]+?)(?:\|([^\]]*?))?\]\]/g;
@@ -50,12 +50,14 @@ export class WikiConverterModal extends Modal {
 
     if (this.items.length === 0) {
       this.contentEl.createEl('p', { text: t('wiki.empty'), cls: 'orphan-status' });
-      this.renderFooter();
-      return;
+    } else {
+      this.renderHeader();
+      this.renderList();
     }
 
-    this.renderHeader();
-    this.renderList();
+    // Always check for broken links
+    await this.renderBrokenLinksSection();
+
     this.renderFooter();
   }
 
@@ -235,6 +237,74 @@ export class WikiConverterModal extends Modal {
 
     new Notice(t('wiki.convertDone', { count: totalConverted }));
     await this.scanAndRender();
+  }
+
+  private async renderBrokenLinksSection(): Promise<void> {
+    const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+    if (!view) return;
+    const file = view.file;
+    if (!file) return;
+
+    const content = await this.app.vault.read(file);
+    const noteDir = (file.parent?.path ?? '').replace(/^\/+$/, '');
+
+    // Create a temporary repairer to use findUnresolvableLinks
+    const { BrokenLinkRepairer } = await import('./broken-link-repairer');
+    const repairer = new BrokenLinkRepairer(this.app, this.settings);
+    const brokenLinks = repairer.findUnresolvableLinks(content, noteDir, file.path);
+
+    if (brokenLinks.length === 0) return;
+
+    const section = this.contentEl.createDiv({ cls: 'orphan-broken-section' });
+    section.createEl('h4', { text: t('orphan.brokenLinks') });
+    section.createEl('p', { text: t('orphan.brokenLinksDesc'), cls: 'orphan-broken-desc' });
+
+    for (const link of brokenLinks) {
+      const row = section.createDiv({ cls: 'orphan-broken-item' });
+      row.createSpan({ text: link.rawLink, cls: 'orphan-broken-link' });
+      row.createSpan({
+        text: t('orphan.brokenLinkLine', { line: link.line }),
+        cls: 'orphan-broken-line',
+      });
+
+      const actions = row.createDiv({ cls: 'orphan-actions' });
+
+      // Navigate to line button
+      const gotoBtn = actions.createEl('button', {
+        cls: 'orphan-locate-btn',
+        attr: { 'aria-label': t('orphan.locateNote'), title: t('orphan.locateNote') },
+      });
+      gotoBtn.innerHTML = getIconSvg('file-text');
+      gotoBtn.addEventListener('click', async (evt) => {
+        evt.stopPropagation();
+        const leaf = this.app.workspace.getLeaf();
+        await leaf.openFile(file);
+        // Scroll to line
+        const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+        if (activeView) {
+          const editor = activeView.editor;
+          const line = Math.max(0, link.line - 1);
+          editor.setCursor(line, 0);
+          editor.scrollIntoView({ from: { line, ch: 0 }, to: { line, ch: 0 } }, true);
+        }
+      });
+
+      // Delete link button
+      const deleteBtn = actions.createEl('button', {
+        cls: 'orphan-locate-btn',
+        attr: { 'aria-label': t('orphan.removeLink'), title: t('orphan.removeLink') },
+      });
+      deleteBtn.innerHTML = getIconSvg('trash-2');
+      deleteBtn.addEventListener('click', async (evt) => {
+        evt.stopPropagation();
+        const fileContent = await this.app.vault.read(file);
+        const idx = fileContent.indexOf(link.rawLink);
+        if (idx === -1) return;
+        const newContent = fileContent.substring(0, idx) + fileContent.substring(idx + link.rawLink.length);
+        await this.app.vault.modify(file, newContent);
+        await this.scanAndRender();
+      });
+    }
   }
 
   private async scanWikiLinks(mode: 'current' | 'all'): Promise<WikiLinkItem[]> {

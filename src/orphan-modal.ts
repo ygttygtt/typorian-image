@@ -1,6 +1,6 @@
 import { App, Modal, Notice, TFile, MarkdownView } from 'obsidian';
 import { OrphanDetector } from './orphan-detector';
-import { OrphanImageInfo, UnresolvableLink } from './orphan-types';
+import { OrphanImageInfo } from './orphan-types';
 import { BrokenLinkRepairer } from './broken-link-repairer';
 import { TyporianSettings } from './settings';
 import { getIconSvg } from './icon-utils';
@@ -53,7 +53,6 @@ export class OrphanImageModal extends Modal {
       this.renderList();
     }
 
-    await this.renderBrokenLinksSection();
     this.renderFooter();
   }
 
@@ -154,63 +153,6 @@ export class OrphanImageModal extends Modal {
         if (evt.target === checkbox) return;
         checkbox.checked = !checkbox.checked;
         checkbox.dispatchEvent(new Event('change'));
-      });
-    }
-  }
-
-  private async renderBrokenLinksSection(): Promise<void> {
-    const view = this.app.workspace.getActiveViewOfType(MarkdownView);
-    if (!view) return;
-
-    const file = view.file;
-    if (!file) return;
-
-    const content = await this.app.vault.read(file);
-    const noteDir = file.parent?.path ?? '';
-    const brokenLinks = this.repairer.findUnresolvableLinks(content, noteDir, file.path);
-
-    if (brokenLinks.length === 0) return;
-
-    const section = this.contentEl.createDiv({ cls: 'orphan-broken-section' });
-    section.createEl('h4', { text: t('orphan.brokenLinks') });
-    section.createEl('p', { text: t('orphan.brokenLinksDesc'), cls: 'orphan-broken-desc' });
-
-    for (const link of brokenLinks) {
-      const row = section.createDiv({ cls: 'orphan-broken-item' });
-      row.createSpan({ text: link.rawLink, cls: 'orphan-broken-link' });
-      row.createSpan({
-        text: t('orphan.brokenLinkLine', { line: link.line }),
-        cls: 'orphan-broken-line',
-      });
-
-      // Action buttons
-      const actions = row.createDiv({ cls: 'orphan-actions' });
-
-      const openNoteBtn = actions.createEl('button', {
-        cls: 'orphan-locate-btn',
-        attr: { 'aria-label': t('orphan.locateNote'), title: t('orphan.locateNote') },
-      });
-      openNoteBtn.innerHTML = getIconSvg('file-text');
-      openNoteBtn.addEventListener('click', (evt) => {
-        evt.stopPropagation();
-        this.app.workspace.getLeaf().openFile(file);
-      });
-
-      // Delete link button
-      const deleteBtn = actions.createEl('button', {
-        cls: 'orphan-locate-btn',
-        attr: { 'aria-label': t('orphan.removeLink'), title: t('orphan.removeLink') },
-      });
-      deleteBtn.innerHTML = getIconSvg('trash-2');
-      deleteBtn.addEventListener('click', async (evt) => {
-        evt.stopPropagation();
-        const currentContent = await this.app.vault.read(file);
-        const idx = currentContent.indexOf(link.rawLink);
-        if (idx === -1) return;
-        const newContent = currentContent.substring(0, idx) + currentContent.substring(idx + link.rawLink.length);
-        await this.app.vault.modify(file, newContent);
-        // Re-scan
-        await this.scanAndRender();
       });
     }
   }
