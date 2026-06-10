@@ -222,18 +222,19 @@ export class WikiConverterModal extends Modal {
     });
     refreshBtn.addEventListener('click', () => this.scanAndRender());
 
-    const cleanBrokenBtn = leftGroup.createEl('button', {
-      text: t('wiki.cleanBroken'),
-      cls: 'orphan-repair-btn',
-    });
-    cleanBrokenBtn.addEventListener('click', () => this.handleCleanBroken());
-
+    // Right group: convert + clean broken (matches orphan modal layout)
     const defaultText = this.scanMode === 'current' ? t('wiki.convertCurrent') : t('wiki.convertAll');
     this.convertButton = rightGroup.createEl('button', {
       text: defaultText,
       cls: 'mod-cta',
     });
     this.convertButton.addEventListener('click', () => this.handleConvert());
+
+    const cleanBrokenBtn = rightGroup.createEl('button', {
+      text: t('wiki.cleanBroken'),
+      cls: 'mod-warning',
+    });
+    cleanBrokenBtn.addEventListener('click', () => this.handleCleanBroken());
   }
 
   private updateSummary(): void {
