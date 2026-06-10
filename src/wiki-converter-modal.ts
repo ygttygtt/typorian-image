@@ -48,10 +48,11 @@ export class WikiConverterModal extends Modal {
     this.items = await this.scanWikiLinks(this.scanMode);
     this.contentEl.empty();
 
+    this.renderHeader();
+
     if (this.items.length === 0) {
       this.contentEl.createEl('p', { text: t('wiki.empty'), cls: 'orphan-status' });
     } else {
-      this.renderHeader();
       this.renderList();
     }
 
@@ -214,12 +215,15 @@ export class WikiConverterModal extends Modal {
     const cancelBtn = leftGroup.createEl('button', { text: t('orphan.cancel') });
     cancelBtn.addEventListener('click', () => this.close());
 
-    const refreshBtn = leftGroup.createEl('button', { cls: 'orphan-refresh-btn' });
-    refreshBtn.innerHTML = getIconSvg('refresh-cw');
+    const refreshBtn = leftGroup.createEl('button', {
+      text: t('orphan.refresh'),
+      cls: 'orphan-repair-btn',
+    });
     refreshBtn.addEventListener('click', () => this.scanAndRender());
 
+    const defaultText = this.scanMode === 'current' ? t('wiki.convertCurrent') : t('wiki.convertAll');
     this.convertButton = rightGroup.createEl('button', {
-      text: t('wiki.convert'),
+      text: defaultText,
       cls: 'mod-cta',
     });
     this.convertButton.disabled = true;
@@ -254,9 +258,15 @@ export class WikiConverterModal extends Modal {
     let count = 0;
     this.checkboxes.forEach((cb) => { if (cb.checked) count++; });
     this.convertButton.disabled = count === 0;
-    this.convertButton.textContent = count > 0
-      ? t('wiki.convertCount', { count })
-      : t('wiki.convert');
+    if (this.scanMode === 'current') {
+      this.convertButton.textContent = count > 0
+        ? t('wiki.convertCurrentCount', { count })
+        : t('wiki.convertCurrent');
+    } else {
+      this.convertButton.textContent = count > 0
+        ? t('wiki.convertAllCount', { count })
+        : t('wiki.convertAll');
+    }
   }
 
   private async handleConvert(): Promise<void> {

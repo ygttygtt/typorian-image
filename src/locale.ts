@@ -32,8 +32,6 @@ type LocaleKey =
   | 'orphan.locateNote'
   | 'orphan.noteNotFound'
   | 'orphan.refresh'
-  | 'orphan.repair'
-  | 'orphan.repairAll'
   | 'orphan.repairFixedBroken'
   | 'orphan.repairFixedWiki'
   | 'orphan.repairFixedBoth'
@@ -43,6 +41,8 @@ type LocaleKey =
   | 'orphan.repairNone'
   | 'orphan.repairAllNone'
   | 'orphan.repairNoActive'
+  | 'orphan.repairCurrent'
+  | 'orphan.repairAllBtn'
   | 'orphan.brokenLinks'
   | 'orphan.brokenLinksDesc'
   | 'orphan.brokenLinkLine'
@@ -93,8 +93,6 @@ type LocaleKey =
   | 'wiki.scanning'
   | 'wiki.empty'
   | 'wiki.summary'
-  | 'wiki.convert'
-  | 'wiki.convertCount'
   | 'wiki.convertDone'
   | 'wiki.modeCurrent'
   | 'wiki.modeAll'
@@ -106,7 +104,11 @@ type LocaleKey =
   | 'settings.showWikiConverter.name'
   | 'settings.showWikiConverter.desc'
   | 'settings.icons.wikiConverter'
-  | 'wiki.broken';
+  | 'wiki.broken'
+  | 'wiki.convertCurrent'
+  | 'wiki.convertAll'
+  | 'wiki.convertCurrentCount'
+  | 'wiki.convertAllCount';
 
 const zh: Record<LocaleKey, string> = {
   'settings.namingStrategy.name': '图片命名策略',
@@ -148,8 +150,6 @@ const zh: Record<LocaleKey, string> = {
   'orphan.locateNote': '打开关联笔记',
   'orphan.noteNotFound': '未找到关联笔记',
   'orphan.refresh': '刷新列表',
-  'orphan.repair': '修复当前',
-  'orphan.repairAll': '全局修复',
   'orphan.repairFixedBroken': '已修复 {count} 处失效链接，正在重新扫描...',
   'orphan.repairFixedWiki': '已转换 {count} 处 Wiki 链接，正在重新扫描...',
   'orphan.repairFixedBoth': '已修复 {broken} 处失效链接、转换 {wiki} 处 Wiki 链接，正在重新扫描...',
@@ -159,6 +159,8 @@ const zh: Record<LocaleKey, string> = {
   'orphan.repairNone': '当前笔记中未发现失效图片链接。',
   'orphan.repairAllNone': '所有笔记中均未发现失效图片链接。',
   'orphan.repairNoActive': '请先打开一个笔记，再执行链接修复。',
+  'orphan.repairCurrent': '修复当前笔记',
+  'orphan.repairAllBtn': '修复全部笔记',
   'orphan.brokenLinks': '无法解析的图片链接',
   'orphan.brokenLinksDesc': '以下链接无法解析到任何文件，可能已丢失或损坏：',
   'orphan.brokenLinkLine': '第 {line} 行',
@@ -209,8 +211,6 @@ const zh: Record<LocaleKey, string> = {
   'wiki.scanning': '正在扫描 Wiki 链接...',
   'wiki.empty': '未发现 Wiki 图片链接。',
   'wiki.summary': '条 Wiki 图片链接',
-  'wiki.convert': '转换选中',
-  'wiki.convertCount': '转换选中 ({count} 条)',
   'wiki.convertDone': '已转换 {count} 条 Wiki 链接。',
   'wiki.modeCurrent': '当前笔记',
   'wiki.modeAll': '全部笔记',
@@ -223,6 +223,10 @@ const zh: Record<LocaleKey, string> = {
   'settings.showWikiConverter.desc': '开启后，左侧栏将出现 Wiki 链接转换入口。',
   'settings.icons.wikiConverter': 'Wiki 转换按钮图标',
   'wiki.broken': '条失效链接',
+  'wiki.convertCurrent': '转换当前笔记',
+  'wiki.convertAll': '转换全部笔记',
+  'wiki.convertCurrentCount': '转换当前笔记 ({count} 条)',
+  'wiki.convertAllCount': '转换全部笔记 ({count} 条)',
 };
 
 const en: Record<LocaleKey, string> = {
@@ -266,8 +270,6 @@ const en: Record<LocaleKey, string> = {
   'orphan.locateNote': 'Open linked note',
   'orphan.noteNotFound': 'No linked note found',
   'orphan.refresh': 'Refresh list',
-  'orphan.repair': 'Current',
-  'orphan.repairAll': 'All notes',
   'orphan.repairFixedBroken': 'Repaired {count} broken link(s). Rescanning...',
   'orphan.repairFixedWiki': 'Converted {count} wiki link(s). Rescanning...',
   'orphan.repairFixedBoth': 'Repaired {broken} broken link(s), converted {wiki} wiki link(s). Rescanning...',
@@ -277,6 +279,8 @@ const en: Record<LocaleKey, string> = {
   'orphan.repairNone': 'No broken image links found in current note.',
   'orphan.repairAllNone': 'No broken image links found across all notes.',
   'orphan.repairNoActive': 'Please open a note first to repair links.',
+  'orphan.repairCurrent': 'Repair Current',
+  'orphan.repairAllBtn': 'Repair All Notes',
   'orphan.brokenLinks': 'Unresolvable image links',
   'orphan.brokenLinksDesc': 'The following links cannot be resolved to any file — the images may be lost or corrupted:',
   'orphan.brokenLinkLine': 'Line {line}',
@@ -327,8 +331,6 @@ const en: Record<LocaleKey, string> = {
   'wiki.scanning': 'Scanning wiki links...',
   'wiki.empty': 'No wiki image links found.',
   'wiki.summary': 'wiki image link(s)',
-  'wiki.convert': 'Convert Selected',
-  'wiki.convertCount': 'Convert Selected ({count})',
   'wiki.convertDone': 'Converted {count} wiki link(s).',
   'wiki.modeCurrent': 'Current Note',
   'wiki.modeAll': 'All Notes',
@@ -341,6 +343,10 @@ const en: Record<LocaleKey, string> = {
   'settings.showWikiConverter.desc': 'When enabled, the Wiki link converter appears in the ribbon.',
   'settings.icons.wikiConverter': 'Wiki converter button icon',
   'wiki.broken': 'broken link(s)',
+  'wiki.convertCurrent': 'Convert Current Note',
+  'wiki.convertAll': 'Convert All Notes',
+  'wiki.convertCurrentCount': 'Convert Current Note ({count})',
+  'wiki.convertAllCount': 'Convert All Notes ({count})',
 };
 
 let currentLocale: 'zh' | 'en' = 'en';

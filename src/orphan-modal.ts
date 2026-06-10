@@ -13,8 +13,10 @@ export class OrphanImageModal extends Modal {
   private checkboxes: Map<string, HTMLInputElement> = new Map();
   private selectAllCheckbox: HTMLInputElement | null = null;
   private cleanupButton: HTMLButtonElement | null = null;
+  private repairButton: HTMLButtonElement | null = null;
   private listContainer: HTMLDivElement | null = null;
   private headerContainer: HTMLDivElement | null = null;
+  private scanMode: 'current' | 'all' = 'current';
 
   constructor(app: App, private settings?: TyporianSettings) {
     super(app);
@@ -40,8 +42,25 @@ export class OrphanImageModal extends Modal {
       cls: 'orphan-status',
     });
 
-    this.orphans = await this.detector.scan();
+    const allOrphans = await this.detector.scan();
+
+    // Filter by scan mode
+    if (this.scanMode === 'current') {
+      const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+      const currentFile = view?.file;
+      if (currentFile) {
+        const folderPrefix = currentFile.path.replace(/\.md$/, '');
+        this.orphans = allOrphans.filter(o => o.file.path.startsWith(folderPrefix));
+      } else {
+        this.orphans = [];
+      }
+    } else {
+      this.orphans = allOrphans;
+    }
+
     this.contentEl.empty();
+
+    this.renderHeader();
 
     if (this.orphans.length === 0) {
       this.contentEl.createEl('p', {
@@ -49,7 +68,6 @@ export class OrphanImageModal extends Modal {
         cls: 'orphan-status',
       });
     } else {
-      this.renderHeader();
       this.renderList();
     }
 
@@ -59,6 +77,26 @@ export class OrphanImageModal extends Modal {
   private renderHeader(): void {
     this.headerContainer = this.contentEl.createDiv({ cls: 'orphan-header' });
 
+    // Scan mode toggle buttons
+    const modeGroup = this.headerContainer.createDiv({ cls: 'wiki-mode-group' });
+    const currentBtn = modeGroup.createEl('button', {
+      text: t('wiki.modeCurrent'),
+      cls: `wiki-mode-btn${this.scanMode === 'current' ? ' is-active' : ''}`,
+    });
+    const allBtn = modeGroup.createEl('button', {
+      text: t('wiki.modeAll'),
+      cls: `wiki-mode-btn${this.scanMode === 'all' ? ' is-active' : ''}`,
+    });
+    currentBtn.addEventListener('click', async () => {
+      this.scanMode = 'current';
+      await this.scanAndRender();
+    });
+    allBtn.addEventListener('click', async () => {
+      this.scanMode = 'all';
+      await this.scanAndRender();
+    });
+
+    // Select all
     const selectAllLabel = this.headerContainer.createEl('label', { cls: 'orphan-select-all-label' });
     this.selectAllCheckbox = selectAllLabel.createEl('input', { type: 'checkbox' });
     selectAllLabel.createSpan({ text: t('orphan.selectAll') });
@@ -160,33 +198,26 @@ export class OrphanImageModal extends Modal {
   private renderFooter(): void {
     const footer = this.contentEl.createDiv({ cls: 'orphan-footer' });
 
-    // Left group: repair buttons + refresh
+    // Left group: cancel + refresh
     const leftGroup = footer.createDiv({ cls: 'orphan-footer-left' });
 
-    const repairBtn = leftGroup.createEl('button', {
-      text: t('orphan.repair'),
-      cls: 'orphan-repair-btn',
-    });
-    repairBtn.addEventListener('click', () => this.handleRepairCurrent());
-
-    const repairAllBtn = leftGroup.createEl('button', {
-      text: t('orphan.repairAll'),
-      cls: 'orphan-repair-btn',
-    });
-    repairAllBtn.addEventListener('click', () => this.handleRepairAll());
+    const cancelBtn = leftGroup.createEl('button', { text: t('orphan.cancel') });
+    cancelBtn.addEventListener('click', () => this.close());
 
     const refreshBtn = leftGroup.createEl('button', {
-      cls: 'orphan-refresh-btn',
-      attr: { 'aria-label': t('orphan.refresh'), title: t('orphan.refresh') },
+      text: t('orphan.refresh'),
+      cls: 'orphan-repair-btn',
     });
-    refreshBtn.innerHTML = getIconSvg('refresh-cw');
     refreshBtn.addEventListener('click', () => this.scanAndRender());
 
-    // Right group: cancel + cleanup
+    // Right group: repair + cleanup
     const rightGroup = footer.createDiv({ cls: 'orphan-footer-right' });
 
-    const cancelBtn = rightGroup.createEl('button', { text: t('orphan.cancel') });
-    cancelBtn.addEventListener('click', () => this.close());
+    this.repairButton = rightGroup.createEl('button', {
+      text: this.scanMode === 'current' ? t('orphan.repairCurrent') : t('orphan.repairAllBtn'),
+      cls: 'orphan-repair-btn',
+    });
+    this.repairButton.addEventListener('click', () => this.handleRepair());
 
     this.cleanupButton = rightGroup.createEl('button', {
       text: t('orphan.cleanup'),
@@ -196,54 +227,54 @@ export class OrphanImageModal extends Modal {
     this.cleanupButton.addEventListener('click', () => this.handleCleanup());
   }
 
-  private async handleRepairCurrent(): Promise<void> {
-    const view = this.app.workspace.getActiveViewOfType(MarkdownView);
-    if (!view) {
-      new Notice(t('orphan.repairNoActive'));
-      return;
-    }
+  private async handleRepair(): Promise<void> {
+    if (this.scanMode === 'current') {
+      const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+      if (!view) {
+        new Notice(t('orphan.repairNoActive'));
+        return;
+      }
 
-    const editorView = (view as any).editor?.cm;
-    if (!editorView) return;
+      const editorView = (view as any).editor?.cm;
+      if (!editorView) return;
 
-    const result = await this.repairer.repair(editorView);
-    if (!result) {
-      new Notice(t('orphan.repairNoActive'));
-      return;
-    }
+      const result = await this.repairer.repair(editorView);
+      if (!result) {
+        new Notice(t('orphan.repairNoActive'));
+        return;
+      }
 
-    const { brokenFixed, wikiConverted, total } = result;
-    if (total === 0) {
-      new Notice(t('orphan.repairNone'));
-    } else if (brokenFixed > 0 && wikiConverted > 0) {
-      new Notice(t('orphan.repairFixedBoth', { broken: brokenFixed, wiki: wikiConverted }));
-    } else if (wikiConverted > 0) {
-      new Notice(t('orphan.repairFixedWiki', { count: wikiConverted }));
+      const { brokenFixed, wikiConverted, total } = result;
+      if (total === 0) {
+        new Notice(t('orphan.repairNone'));
+      } else if (brokenFixed > 0 && wikiConverted > 0) {
+        new Notice(t('orphan.repairFixedBoth', { broken: brokenFixed, wiki: wikiConverted }));
+      } else if (wikiConverted > 0) {
+        new Notice(t('orphan.repairFixedWiki', { count: wikiConverted }));
+      } else {
+        new Notice(t('orphan.repairFixedBroken', { count: brokenFixed }));
+      }
+
+      if (total > 0) {
+        await this.scanAndRender();
+      }
     } else {
-      new Notice(t('orphan.repairFixedBroken', { count: brokenFixed }));
-    }
+      const result = await this.repairer.repairAll();
+      const { scanned, brokenFixed, wikiConverted, total } = result;
 
-    if (total > 0) {
-      await this.scanAndRender();
-    }
-  }
+      if (total === 0) {
+        new Notice(t('orphan.repairAllNone'));
+      } else if (brokenFixed > 0 && wikiConverted > 0) {
+        new Notice(t('orphan.repairAllFixedBoth', { scanned, broken: brokenFixed, wiki: wikiConverted }));
+      } else if (wikiConverted > 0) {
+        new Notice(t('orphan.repairAllFixedWiki', { scanned, count: wikiConverted }));
+      } else {
+        new Notice(t('orphan.repairAllFixedBroken', { scanned, count: brokenFixed }));
+      }
 
-  private async handleRepairAll(): Promise<void> {
-    const result = await this.repairer.repairAll();
-    const { scanned, brokenFixed, wikiConverted, total } = result;
-
-    if (total === 0) {
-      new Notice(t('orphan.repairAllNone'));
-    } else if (brokenFixed > 0 && wikiConverted > 0) {
-      new Notice(t('orphan.repairAllFixedBoth', { scanned, broken: brokenFixed, wiki: wikiConverted }));
-    } else if (wikiConverted > 0) {
-      new Notice(t('orphan.repairAllFixedWiki', { scanned, count: wikiConverted }));
-    } else {
-      new Notice(t('orphan.repairAllFixedBroken', { scanned, count: brokenFixed }));
-    }
-
-    if (total > 0) {
-      await this.scanAndRender();
+      if (total > 0) {
+        await this.scanAndRender();
+      }
     }
   }
 
