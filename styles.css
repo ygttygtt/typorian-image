@@ -456,86 +456,131 @@ body.typorian-hide-assets .workspace-leaf-content[data-type="file-explorer"]
   display: none;
 }
 
+
+/* Image check: navigation, scope, results and actions have distinct hierarchy. */
 .typorian-image-check-modal .modal {
-  width: min(900px, 94vw);
+  width: min(860px, 94vw);
 }
-
-.image-check-tabs,
-.image-check-toolbar {
+.typorian-image-check-modal .modal-content { margin-top: 18px; }
+.typorian-image-check-modal .image-check-tabs {
   display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-  margin-bottom: 10px;
+  gap: 24px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  margin-bottom: 16px;
 }
-
-.image-check-tabs button.is-active,
-.image-check-toolbar button.is-active {
-  background: var(--interactive-accent);
-  color: var(--text-on-accent);
-}
-
-.image-check-scope,
-.image-check-help,
-.image-check-excerpt {
+.typorian-image-check-modal .image-check-tabs button {
+  box-shadow: none;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--text-muted);
-  overflow-wrap: anywhere;
+  padding: 0 0 12px;
+  height: auto;
+  border-bottom: 2px solid transparent;
 }
-
-.image-check-result {
-  padding: 10px;
-  background: var(--background-secondary);
-  border-radius: 6px;
-}
-
-.image-check-list {
-  max-height: 52vh;
-  overflow-y: auto;
-}
-
-.image-check-item {
-  padding: 12px;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 6px;
-  margin-bottom: 10px;
-}
-
-.image-check-reference {
-  display: block;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.image-check-status {
+.typorian-image-check-modal .image-check-tabs button.is-active {
+  border-bottom-color: var(--interactive-accent);
+  color: var(--text-normal);
   font-weight: 600;
 }
-
-.image-check-preview {
-  display: block;
-  max-width: 100%;
-  max-height: 120px;
-  object-fit: contain;
-  margin: 8px 0;
-}
-
-.image-check-path-button {
-  white-space: normal;
-  overflow-wrap: anywhere;
-  height: auto;
-  text-align: left;
-}
-
-.image-check-target select {
-  max-width: 100%;
-}
-
-.image-check-select-all {
+.typorian-image-check-modal .image-check-controls,
+.typorian-image-check-modal .image-check-context,
+.typorian-image-check-modal .image-check-utilities,
+.typorian-image-check-modal .image-check-batch,
+.typorian-image-check-modal .image-check-batch-buttons,
+.typorian-image-check-modal .image-check-row-header,
+.typorian-image-check-modal .image-check-row-actions {
   display: flex;
-  gap: 6px;
   align-items: center;
+  gap: 10px;
 }
-
-.image-check-folder-scope {
+.typorian-image-check-modal .image-check-controls { justify-content: space-between; }
+.typorian-image-check-modal .image-check-context { min-width: 0; flex: 1; }
+.typorian-image-check-modal .image-check-context select { flex-shrink: 0; }
+.typorian-image-check-modal .image-check-note {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.typorian-image-check-modal .image-check-icon-button {
+  background: transparent;
+  box-shadow: none;
+  padding: 6px;
+  width: 30px;
+  height: 30px;
+  color: var(--text-muted);
+}
+.typorian-image-check-modal .image-check-icon-button:hover,
+.typorian-image-check-modal .image-check-path-button:hover,
+.typorian-image-check-modal .image-check-location:hover { background: var(--background-modifier-hover); }
+.typorian-image-check-modal .image-check-summary { margin: 20px 0 10px; font-weight: 500; }
+.typorian-image-check-modal .image-check-batch {
+  min-height: 48px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--background-modifier-border);
   margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.typorian-image-check-modal .image-check-selected-count { color: var(--text-muted); font-size: var(--font-ui-small); }
+.typorian-image-check-modal .image-check-batch-buttons { margin-left: auto; }
+.typorian-image-check-modal .image-check-select-all { display: flex; gap: 8px; align-items: center; white-space: nowrap; }
+.typorian-image-check-modal .image-check-list { max-height: 48vh; overflow-y: auto; padding: 1px; }
+.typorian-image-check-modal .image-check-item {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.typorian-image-check-modal .image-check-row-header { margin-bottom: 10px; }
+.typorian-image-check-modal .image-check-status { font-size: var(--font-ui-small); font-weight: 600; }
+.typorian-image-check-modal .image-check-location {
+  margin-left: auto;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+.typorian-image-check-modal .image-check-location,
+.typorian-image-check-modal .image-check-path-button,
+.typorian-image-check-modal .image-check-delete {
+  box-shadow: none;
+  background: transparent;
+  border: none;
+}
+.typorian-image-check-modal .image-check-reference {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--background-secondary);
+  white-space: pre-wrap;
   overflow-wrap: anywhere;
+  font-size: var(--font-ui-small);
+}
+.typorian-image-check-modal .image-check-file { display: flex; gap: 14px; align-items: center; margin: 14px 0; }
+.typorian-image-check-modal .image-check-preview { width: 72px; height: 64px; object-fit: contain; border-radius: 6px; background: var(--background-secondary); }
+.typorian-image-check-modal .image-check-file-info { min-width: 0; flex: 1; }
+.typorian-image-check-modal .image-check-path-button { padding: 0; color: var(--text-normal); height: auto; white-space: normal; text-align: left; overflow-wrap: anywhere; }
+.typorian-image-check-modal .image-check-file-path { display: block; color: var(--text-muted); font-size: var(--font-ui-smaller); overflow-wrap: anywhere; margin-top: 4px; }
+.typorian-image-check-modal .image-check-target select { max-width: 100%; margin-top: 12px; }
+.typorian-image-check-modal .image-check-row-actions { justify-content: flex-end; margin-top: 14px; flex-wrap: wrap; }
+.typorian-image-check-modal .image-check-delete { color: var(--text-muted); }
+.typorian-image-check-modal .image-check-delete:hover { color: var(--text-error); background: var(--background-modifier-hover); }
+.typorian-image-check-modal .image-check-help,
+.typorian-image-check-modal .image-check-excerpt,
+.typorian-image-check-modal .image-check-folder-scope { color: var(--text-muted); font-size: var(--font-ui-small); overflow-wrap: anywhere; }
+.typorian-image-check-modal .image-check-excerpt { margin-top: 8px; }
+.typorian-image-check-modal .image-check-result { padding: 12px; border-radius: 8px; background: var(--background-secondary); font-size: var(--font-ui-small); }
+.typorian-image-check-modal .image-check-empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 52px 20px; }
+.typorian-image-check-modal .image-check-empty-icon { color: var(--text-muted); margin-bottom: 12px; }
+.typorian-image-check-modal .image-check-empty-icon svg { width: 32px; height: 32px; }
+.typorian-image-check-modal .image-check-empty h3 { margin: 0 0 8px; font-size: var(--font-ui-medium); }
+.typorian-image-check-modal .image-check-empty p { color: var(--text-muted); margin: 0; font-size: var(--font-ui-small); }
+.typorian-image-check-modal .image-check-footnote { color: var(--text-muted); font-size: var(--font-ui-smaller); margin: 12px 0 0; }
+@media (max-width: 600px) {
+  .typorian-image-check-modal .image-check-context { align-items: flex-start; flex-direction: column; gap: 6px; }
+  .typorian-image-check-modal .image-check-batch-buttons { width: 100%; justify-content: flex-end; }
 }
