@@ -1,7 +1,7 @@
 import { App, Modal, Notice } from 'obsidian';
 import { TyporianSettings } from '../settings';
 import { RestructureManager, RestructurePlan } from './restructure-manager';
-import { t } from './locale';
+import { t, isZh } from './locale';
 
 export class RestructureModal extends Modal {
   private settings: TyporianSettings;
@@ -83,7 +83,10 @@ export class RestructureModal extends Modal {
 
       // Note name cell
       const noteName = entry.sourcePath;
-      tr.createEl('td', { text: noteName, cls: 'restructure-td-note' });
+      const noteCell = tr.createEl('td', { text: noteName, cls: 'restructure-td-note' });
+      if (entry.unresolvedCount) noteCell.createEl('p', { text: isZh()
+        ? `${entry.unresolvedCount} 处未打包引用保留原文`
+        : `${entry.unresolvedCount} unpackaged references retained`, cls: 'orphan-size' });
 
       // Target path cell
       const baseName = noteName.split('/').pop()!.replace(/\.md$/, '');

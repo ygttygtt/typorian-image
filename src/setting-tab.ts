@@ -89,20 +89,7 @@ export class TyporianSettingTab extends PluginSettingTab {
       );
 
     // ========== Section: 无主图片清理 ==========
-    containerEl.createEl('h3', { text: t('settings.section.orphan') });
-
-    // --- Wiki link conversion toggle ---
-    new Setting(containerEl)
-      .setName(t('settings.wikiConversion.name'))
-      .setDesc(t('settings.wikiConversion.desc'))
-      .addToggle((toggle) =>
-        toggle
-          .setValue(this.plugin.settings.enableWikiLinkConversion)
-          .onChange(async (value) => {
-            this.plugin.settings.enableWikiLinkConversion = value;
-            await this.plugin.saveSettings();
-          })
-      );
+    containerEl.createEl('h3', { text: t('settings.section.parsing') });
 
     // --- Scan code blocks toggle ---
     new Setting(containerEl)
@@ -131,47 +118,7 @@ export class TyporianSettingTab extends PluginSettingTab {
           })
       );
 
-    // ========== Section: Wiki 链接转换 ==========
-    containerEl.createEl('h3', { text: t('settings.section.wiki') });
-
-    // --- Show Wiki converter toggle ---
-    new Setting(containerEl)
-      .setName(t('settings.showWikiConverter.name'))
-      .setDesc(t('settings.showWikiConverter.desc'))
-      .addToggle((toggle) =>
-        toggle
-          .setValue(this.plugin.settings.showWikiConverter)
-          .onChange(async (value) => {
-            this.plugin.settings.showWikiConverter = value;
-            await this.plugin.saveSettings();
-            this.plugin.refreshRibbonIcons();
-          })
-      );
-
-    // ========== Section: 一键分享 ==========
-    containerEl.createEl('h3', { text: t('settings.section.share') });
-    containerEl.createEl('p', {
-      text: `${t('share.title')} — ${t('share.exportPath.desc')}`,
-      cls: 'setting-item-description',
-    });
-
-    // ========== Section: 附件重构 ==========
-    containerEl.createEl('h3', { text: t('settings.section.restructure') });
-
-    // --- Show restructure tool toggle ---
-    new Setting(containerEl)
-      .setName(t('settings.showRestructure.name'))
-      .setDesc(t('settings.showRestructure.desc'))
-      .addToggle((toggle) =>
-        toggle
-          .setValue(this.plugin.settings.showRestructureTool)
-          .onChange(async (value) => {
-            this.plugin.settings.showRestructureTool = value;
-            await this.plugin.saveSettings();
-            this.plugin.refreshRibbonIcons();
-          })
-      );
-
+    containerEl.createEl('h3', { text: t('settings.section.output') });
     new Setting(containerEl)
       .setName(t('settings.restructureOutput.name'))
       .setDesc(t('settings.restructureOutput.desc'))
@@ -188,6 +135,35 @@ export class TyporianSettingTab extends PluginSettingTab {
           await this.plugin.saveSettings();
         });
       });
+
+    containerEl.createEl('h3', { text: t('settings.section.shortcuts') });
+    // --- Show Wiki converter toggle ---
+    new Setting(containerEl)
+      .setName(t('settings.showWikiConverter.name'))
+      .setDesc(t('settings.showWikiConverter.desc'))
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.showWikiConverter)
+          .onChange(async (value) => {
+            this.plugin.settings.showWikiConverter = value;
+            await this.plugin.saveSettings();
+            this.plugin.refreshRibbonIcons();
+          })
+      );
+
+    // --- Show restructure tool toggle ---
+    new Setting(containerEl)
+      .setName(t('settings.showRestructure.name'))
+      .setDesc(t('settings.showRestructure.desc'))
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.showRestructureTool)
+          .onChange(async (value) => {
+            this.plugin.settings.showRestructureTool = value;
+            await this.plugin.saveSettings();
+            this.plugin.refreshRibbonIcons();
+          })
+      );
 
     // ========== Section: 图标设置 ==========
     containerEl.createEl('h3', { text: t('settings.icons') });

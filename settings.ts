@@ -10,7 +10,6 @@ export interface TyporianSettings {
   assetFolderPath: string;
   hideAssetFolders: boolean;
   interceptImagePath: boolean;
-  enableWikiLinkConversion: boolean;
   scanCodeBlocks: boolean;
   showRestructureTool: boolean;
   restructureOutputFolder: string;
@@ -29,7 +28,6 @@ export const DEFAULT_SETTINGS: TyporianSettings = {
   assetFolderPath: './${notename}.assets/',
   hideAssetFolders: false,
   interceptImagePath: true,
-  enableWikiLinkConversion: false,
   scanCodeBlocks: false,
   showRestructureTool: false,
   restructureOutputFolder: '_Restructured_Vault',
@@ -38,6 +36,6 @@ export const DEFAULT_SETTINGS: TyporianSettings = {
   iconShare: 'share-2',
   iconRestructure: 'git-fork',
   openFolderAfterExport: false,
-  showWikiConverter: true,
+  showWikiConverter: false,
   iconWikiConverter: 'repeat-2',
 };

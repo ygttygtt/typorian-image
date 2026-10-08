@@ -2,9 +2,9 @@ import { App, TFile, normalizePath } from 'obsidian';
 import JSZip from 'jszip';
 import { TyporianSettings } from '../settings';
 import { PathUtils } from './path-utils';
-import { createMarkdownImage, isRemoteImagePath, parseMarkdownImages, parseWikiImages, resolveWikiImage, resolveMarkdownImage } from './markdown-images';
+import { createMarkdownImage, isRemoteImagePath, parseMarkdownImages, parseWikiImages, resolveActualWikiImage, resolveMarkdownImage, isWikiImageSize } from './markdown-images';
 import { extractCodeBlockRanges, isInsideCodeBlock } from './code-block-filter';
-import { IMAGE_EXTENSIONS } from './orphan-types';
+import { IMAGE_EXTENSIONS } from './constants';
 import { t } from './locale';
 
 export interface ImageReference {
@@ -13,6 +13,7 @@ export interface ImageReference {
   alt: string;
   title: string;
   sourceFile: TFile;
+  syntax: 'markdown' | 'wiki';
 }
 
 /** Resolve actual attachments once, preserving unresolved links and code examples. */
@@ -23,13 +24,13 @@ export function collectImageReferences(app: App, note: TFile, content: string, m
     if (isInsideCodeBlock(image.index, codeRanges) || isRemoteImagePath(image.path)) continue;
     const file = resolveMarkdownImage(app, note.path, PathUtils.decodePath(image.path));
     if (file instanceof TFile && IMAGE_EXTENSIONS.has(file.extension.toLowerCase())) {
-      refs.push({ ...image, sourceFile: file });
+      refs.push({ ...image, sourceFile: file, syntax: 'markdown' });
     }
   }
   for (const image of parseWikiImages(content)) {
-    const { file } = resolveWikiImage(app, note.path, image.path, manualFolder);
+    const file = resolveActualWikiImage(app, note.path, image.path, manualFolder);
     if (file instanceof TFile && IMAGE_EXTENSIONS.has(file.extension.toLowerCase())) {
-      refs.push({ ...image, title: '', sourceFile: file });
+      refs.push({ ...image, title: '', sourceFile: file, syntax: 'wiki' });
     }
   }
   return refs;
@@ -53,37 +54,49 @@ export function assignImageNames(refs: ImageReference[]): Map<string, string> {
   return names;
 }
 
-export function rewriteImageReferences(content: string, refs: ImageReference[], paths: Map<string, string>): string {
+export function rewriteImageReferences(content: string, refs: ImageReference[], paths: Map<string, string>, preserveFormat = false): string {
   for (const ref of refs.slice().sort((a, b) => b.index - a.index)) {
-    const insert = createMarkdownImage(ref.alt, paths.get(ref.sourceFile.path)!, ref.title);
+    const path = paths.get(ref.sourceFile.path)!;
+    const insert = ref.syntax === 'wiki' && (preserveFormat || isWikiImageSize(ref.alt))
+      ? `![[${path}${ref.alt ? `|${ref.alt}` : ''}]]`
+      : createMarkdownImage(ref.alt, path, ref.title);
     content = content.substring(0, ref.index) + insert + content.substring(ref.index + ref.raw.length);
   }
   return content;
 }
 
+export function countUnpackagedReferences(content: string, refs: ImageReference[]): number {
+  const code = extractCodeBlockRanges(content);
+  const packed = new Set(refs.map(ref => ref.index));
+  const markdown = parseMarkdownImages(content).filter(image => !isInsideCodeBlock(image.index, code));
+  return [...markdown, ...parseWikiImages(content)].filter(image => !packed.has(image.index)).length;
+}
+
+export interface ShareResult { path: string; images: number; unpackaged: number; }
+
 export class ShareManager {
   constructor(private app: App, private settings: TyporianSettings) {}
 
-  async exportAsFolder(note: TFile, exportPath: string): Promise<string> {
+  async exportAsFolder(note: TFile, exportPath: string): Promise<ShareResult> {
     const parent = this.resolveExportDirectory(exportPath);
     await this.ensureDir(parent);
     const output = await this.uniqueDirectory(parent, note.basename);
     await this.ensureDir(output);
     const assetsFolder = `${output}/${note.basename}.assets`;
-    const { newContent, copiedImages } = await this.processContent(note);
+    const { newContent, copiedImages, unpackaged } = await this.processContent(note);
     if (copiedImages.length > 0) await this.ensureDir(assetsFolder);
     for (const img of copiedImages) {
       const data = await this.app.vault.readBinary(img.sourceFile);
       await this.app.vault.createBinary(normalizePath(`${output}/${img.newPath}`), data);
     }
     await this.app.vault.create(normalizePath(`${output}/${note.name}`), newContent);
-    return output;
+    return { path: output, images: copiedImages.length, unpackaged };
   }
 
-  async exportAsZip(note: TFile, exportPath: string): Promise<string> {
+  async exportAsZip(note: TFile, exportPath: string): Promise<ShareResult> {
     const parent = this.resolveExportDirectory(exportPath);
     await this.ensureDir(parent);
-    const { newContent, copiedImages } = await this.processContent(note);
+    const { newContent, copiedImages, unpackaged } = await this.processContent(note);
     const zip = new JSZip();
     zip.file(note.name, newContent);
     for (const img of copiedImages) {
@@ -92,12 +105,13 @@ export class ShareManager {
     const zipName = await PathUtils.getUniqueFileName(this.app.vault, parent, note.basename, 'zip');
     const output = normalizePath(parent ? `${parent}/${zipName}` : zipName);
     await this.app.vault.createBinary(output, await zip.generateAsync({ type: 'arraybuffer' }));
-    return output;
+    return { path: output, images: copiedImages.length, unpackaged };
   }
 
   private async processContent(note: TFile): Promise<{
     newContent: string;
     copiedImages: Array<{ sourceFile: TFile; newPath: string }>;
+    unpackaged: number;
   }> {
     const content = await this.app.vault.read(note);
     const refs = collectImageReferences(this.app, note, content, this.settings.manualAttachmentFolder);
@@ -110,7 +124,8 @@ export class ShareManager {
       paths.set(sourceFile.path, newPath);
       copiedImages.push({ sourceFile, newPath });
     }
-    return { newContent: rewriteImageReferences(content, refs, paths), copiedImages };
+    return { newContent: rewriteImageReferences(content, refs, paths), copiedImages,
+      unpackaged: countUnpackagedReferences(content, refs) };
   }
 
   private resolveExportDirectory(path: string): string {

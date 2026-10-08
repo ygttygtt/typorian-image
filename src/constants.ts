@@ -19,3 +19,8 @@ export const MIME_TO_EXT: Record<string, string> = {
   'image/bmp': 'bmp',
   'image/tiff': 'tiff',
 };
+
+// File extensions shared by image imports, references, and inspection.
+export const IMAGE_EXTENSIONS = new Set([
+  'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'tiff', 'tif',
+]);

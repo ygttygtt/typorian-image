@@ -2,7 +2,7 @@ import { App, Notice, TFile, normalizePath } from 'obsidian';
 import { TyporianSettings } from '../settings';
 import { PathUtils } from './path-utils';
 import { SUPPORTED_IMAGE_TYPES, MIME_TO_EXT } from './constants';
-import { IMAGE_EXTENSIONS } from './orphan-types';
+import { IMAGE_EXTENSIONS } from './constants';
 import { createMarkdownImage } from './markdown-images';
 import { t } from './locale';
 
