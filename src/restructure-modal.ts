@@ -1,4 +1,4 @@
-import { App, Modal, Notice } from 'obsidian';
+import { App, Modal, Notice, Setting, setIcon } from 'obsidian';
 import { TyporianSettings } from '../settings';
 import { RestructureManager, RestructurePlan } from './restructure-manager';
 import { t, isZh } from './locale';
@@ -21,20 +21,24 @@ export class RestructureModal extends Modal {
 
   async onOpen(): Promise<void> {
     const { contentEl } = this;
-    this.containerEl.addClass('typorian-restructure-modal');
+    this.containerEl.addClasses(['typorian-ui', 'typorian-restructure-modal']);
     this.titleEl.setText(t('restructure.title'));
 
-    contentEl.createEl('p', { text: t('restructure.scanning'), cls: 'orphan-status' });
+    contentEl.createEl('p', { text: t('restructure.scanning'), cls: 'ti-muted' });
 
     this.plan = await this.manager.preview();
     contentEl.empty();
 
+    contentEl.createEl('p', { cls: 'ti-intro', text: isZh()
+      ? '为选中的笔记整理附件目录。先选择笔记，再选择副本或原地整理。'
+      : 'Organize attachment folders for selected notes. Choose notes and an output mode below.' });
+
     // Header with select-all and summary
-    const header = contentEl.createDiv({ cls: 'orphan-header' });
-    const selectAllLabel = header.createEl('label', { cls: 'orphan-select-all-label' });
+    const header = contentEl.createDiv({ cls: 'ti-batch' });
+    const selectAllLabel = header.createEl('label', { cls: 'ti-select-all' });
     this.selectAllCheckbox = selectAllLabel.createEl('input', { type: 'checkbox' });
     selectAllLabel.createSpan({ text: t('orphan.selectAll') });
-    this.summaryEl = header.createSpan({ cls: 'orphan-summary' });
+    this.summaryEl = header.createSpan({ cls: 'ti-muted' });
 
     this.selectAllCheckbox.addEventListener('change', () => {
       const checked = this.selectAllCheckbox!.checked;
@@ -48,7 +52,7 @@ export class RestructureModal extends Modal {
     });
 
     // Table
-    const tableContainer = contentEl.createDiv({ cls: 'restructure-table-container' });
+    const tableContainer = contentEl.createDiv({ cls: 'ti-list restructure-table-container' });
     const table = tableContainer.createEl('table', { cls: 'restructure-table' });
 
     const thead = table.createEl('thead');
@@ -61,14 +65,14 @@ export class RestructureModal extends Modal {
     const tbody = table.createEl('tbody');
     const targetCells = new Map<string, HTMLElement>();
 
-    for (const entry of this.plan.noteEntries) {
+    for (const entry of this.plan.noteEntries.slice().sort((a, b) => (b.imageCount ?? 0) - (a.imageCount ?? 0))) {
       const tr = tbody.createEl('tr');
       const hasImages = entry.imageCount! > 0;
 
       // Checkbox cell
       const tdCheck = tr.createEl('td', { cls: 'restructure-td-check' });
       if (hasImages) {
-        const checkbox = tdCheck.createEl('input', { type: 'checkbox' });
+        const checkbox = tdCheck.createEl('input', { type: 'checkbox', attr: { 'aria-label': entry.sourcePath } });
         checkbox.checked = true;
         this.selectedNotes.add(entry.sourcePath);
         this.checkboxes.set(entry.sourcePath, checkbox);
@@ -78,7 +82,7 @@ export class RestructureModal extends Modal {
           checkbox.checked = !checkbox.checked;
           checkbox.dispatchEvent(new Event('change'));
         });
-        tr.style.cursor = 'pointer';
+        tr.addClass('restructure-row-selectable');
       }
 
       // Note name cell
@@ -86,11 +90,11 @@ export class RestructureModal extends Modal {
       const noteCell = tr.createEl('td', { text: noteName, cls: 'restructure-td-note' });
       if (entry.unresolvedCount) noteCell.createEl('p', { text: isZh()
         ? `${entry.unresolvedCount} 处未打包引用保留原文`
-        : `${entry.unresolvedCount} unpackaged references retained`, cls: 'orphan-size' });
+        : `${entry.unresolvedCount} unpackaged references retained`, cls: 'ti-muted' });
 
       // Target path cell
       const baseName = noteName.split('/').pop()!.replace(/\.md$/, '');
-      const assetsPath = entry.targetPath.replace(/[^/]+$/, `${baseName}.assets/`);
+      const assetsPath = hasImages ? entry.targetPath.replace(/[^/]+$/, `${baseName}.assets/`) : '—';
       targetCells.set(entry.sourcePath, tr.createEl('td', { text: assetsPath, cls: 'restructure-td-assets' }));
 
       // Image count cell
@@ -99,49 +103,60 @@ export class RestructureModal extends Modal {
       } else {
         const td = tr.createEl('td', { cls: 'restructure-td-images' });
         td.createEl('span', {
-          text: t('restructure.noImages'),
+          text: '—',
           cls: 'restructure-no-images',
+          attr: { title: t('restructure.noImages') },
         });
         tr.classList.add('restructure-row-empty');
       }
     }
 
-    this.updateSummary();
+    this.syncSelection();
 
-    // Footer
-    const footer = contentEl.createDiv({ cls: 'orphan-footer' });
-    const leftGroup = footer.createDiv({ cls: 'orphan-footer-left' });
-    const rightGroup = footer.createDiv({ cls: 'orphan-footer-right' });
+    if (this.plan.noteEntries.length === 0) {
+      header.remove();
+      tableContainer.remove();
+      const empty = contentEl.createDiv({ cls: 'ti-empty' });
+      setIcon(empty.createDiv({ cls: 'ti-empty-icon' }), 'files');
+      empty.createEl('p', { text: isZh() ? '没有可整理的笔记' : 'No notes to organize' });
+    }
 
-    const cancelBtn = leftGroup.createEl('button', { text: t('restructure.cancel') });
-    cancelBtn.addEventListener('click', () => this.close());
-
-    // Mode toggle (sandbox / overwrite)
+    // Output mode belongs to the form, above the action footer.
     let isOverwriteMode = false;
-    const modeToggleEl = leftGroup.createDiv({ cls: 'orphan-wiki-toggle' });
-    modeToggleEl.createSpan({ text: t('restructure.modeOverwrite'), cls: 'orphan-wiki-toggle-label' });
-    const modeTrack = modeToggleEl.createDiv({ cls: 'orphan-wiki-toggle-track' });
-    modeTrack.createDiv({ cls: 'orphan-wiki-toggle-thumb' });
-
-    // Warning text (changes based on mode)
-    const warningEl = contentEl.createEl('p', {
+    const form = contentEl.createDiv({ cls: 'ti-form-group' });
+    new Setting(form)
+      .setName(isZh() ? '整理方式' : 'Output mode')
+      .addDropdown((dropdown) => {
+        dropdown.addOption('copy', isZh() ? '生成副本' : 'Create a copy');
+        dropdown.addOption('overwrite', t('restructure.modeOverwrite'));
+        dropdown.setValue('copy');
+        dropdown.onChange((value) => {
+          isOverwriteMode = value === 'overwrite';
+          updateMode();
+        });
+      });
+    const warningEl = form.createEl('p', {
       text: t('restructure.modeSandboxDesc', { path: this.plan!.outputDir }),
-      cls: 'restructure-warning',
+      cls: 'ti-muted restructure-mode-description',
     });
-    // Move warning before footer
-    contentEl.insertBefore(warningEl, footer);
-
-    // Confirm input (only visible in overwrite mode)
-    const confirmInput = rightGroup.createEl('input', {
+    const confirmGroup = form.createDiv({ cls: 'restructure-confirm-group' });
+    confirmGroup.hidden = true;
+    const confirmLabel = confirmGroup.createEl('label', {
+      text: isZh() ? '输入 confirm 确认原地整理' : 'Type confirm to organize in place',
+    });
+    const confirmInput = confirmLabel.createEl('input', {
       type: 'text',
       placeholder: t('restructure.confirm'),
       cls: 'restructure-confirm-input',
     });
-    confirmInput.style.display = 'none';
 
-    const applyBtn = rightGroup.createEl('button', {
+    const footer = contentEl.createDiv({ cls: 'ti-footer' });
+    const actions = footer.createDiv({ cls: 'ti-footer-actions' });
+    const cancelBtn = actions.createEl('button', { text: t('restructure.cancel'), cls: 'ti-secondary-action' });
+    cancelBtn.addEventListener('click', () => this.close());
+    const applyBtn = actions.createEl('button', {
       text: t('restructure.apply'),
-      cls: 'mod-warning',
+      cls: 'mod-cta',
     });
     applyBtn.disabled = this.selectedNotes.size === 0;
 
@@ -150,28 +165,22 @@ export class RestructureModal extends Modal {
       for (const entry of this.plan!.noteEntries) {
         const noteName = entry.sourcePath.split('/').pop()!.replace(/\.md$/, '');
         const path = isOverwriteMode ? entry.sourcePath : entry.targetPath;
-        targetCells.get(entry.sourcePath)!.setText(path.replace(/[^/]+$/, `${noteName}.assets/`));
+        targetCells.get(entry.sourcePath)!.setText(entry.imageCount ? path.replace(/[^/]+$/, `${noteName}.assets/`) : '—');
       }
       if (isOverwriteMode) {
-        confirmInput.style.display = '';
+        confirmGroup.hidden = false;
         applyBtn.disabled = confirmInput.value !== 'confirm' || this.selectedNotes.size === 0;
         warningEl.setText(t('restructure.overwriteWarning'));
-        warningEl.addClass('restructure-warning-overwrite');
+        warningEl.addClasses(['ti-warning', 'is-overwrite']);
       } else {
-        confirmInput.style.display = 'none';
+        confirmGroup.hidden = true;
         applyBtn.disabled = this.selectedNotes.size === 0;
         warningEl.setText(t('restructure.modeSandboxDesc', { path: this.plan!.outputDir }));
-        warningEl.removeClass('restructure-warning-overwrite');
+        warningEl.removeClasses(['ti-warning', 'is-overwrite']);
       }
     };
 
     this.refreshApplyState = updateMode;
-
-    modeToggleEl.addEventListener('click', () => {
-      isOverwriteMode = !isOverwriteMode;
-      modeTrack.classList.toggle('is-on', isOverwriteMode);
-      updateMode();
-    });
 
     confirmInput.addEventListener('input', () => {
       if (isOverwriteMode) {
@@ -227,7 +236,7 @@ export class RestructureModal extends Modal {
   }
 
   onClose(): void {
-    this.containerEl.removeClass('typorian-restructure-modal');
+    this.containerEl.removeClasses(['typorian-ui', 'typorian-restructure-modal']);
     this.contentEl.inert = false;
     this.contentEl.empty();
     this.refreshApplyState = null;

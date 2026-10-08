@@ -1,6 +1,6 @@
-import { App, Modal, Notice, TFile, MarkdownView } from 'obsidian';
+import { App, Modal, Notice, TFile, MarkdownView, setIcon } from 'obsidian';
 import { TyporianSettings } from '../settings';
-import { t } from './locale';
+import { isZh, t } from './locale';
 import { IMAGE_EXTENSIONS } from './constants';
 import { PathUtils } from './path-utils';
 import { createMarkdownImage, isRemoteImagePath, isWikiImageSize, parseWikiImages, resolveActualWikiImage } from './markdown-images';
@@ -24,7 +24,8 @@ export class WikiConverterModal extends Modal {
   private items: ConversionItem[] = [];
   private missing = 0;
   private checkboxes = new Map<number, HTMLInputElement>();
-  private convertButton!: HTMLButtonElement;
+  private convertButton: HTMLButtonElement | null = null;
+  private allCheckbox: HTMLInputElement | null = null;
 
   constructor(app: App, private settings: TyporianSettings,
     private saveSettings: () => Promise<void>, note?: TFile | null, scope: 'current' | 'all' = 'current') {
@@ -34,6 +35,7 @@ export class WikiConverterModal extends Modal {
   }
 
   async onOpen(): Promise<void> {
+    this.containerEl.addClass('typorian-ui', 'typorian-converter');
     this.titleEl.setText(t('wiki.title'));
     await this.refresh();
   }
@@ -64,80 +66,110 @@ export class WikiConverterModal extends Modal {
     }
   }
 
+  private renderEmpty(icon: string, title: string, description: string): void {
+    const empty = this.contentEl.createDiv({ cls: 'ti-empty' });
+    setIcon(empty.createDiv({ cls: 'ti-empty-icon' }), icon);
+    empty.createEl('h3', { text: title });
+    empty.createEl('p', { text: description });
+  }
+
   private async refresh(): Promise<void> {
     this.contentEl.empty();
-    this.contentEl.createEl('p', { text: t('wiki.scanning') });
+    this.renderEmpty('loader-circle', t('wiki.scanning'), '');
     await this.scan();
     this.contentEl.empty();
     this.checkboxes.clear();
-    this.contentEl.createEl('p', { text: t('wiki.formatOnly'), cls: 'setting-item-description' });
-    const modes = this.contentEl.createDiv({ cls: 'wiki-mode-group' });
-    for (const mode of ['current', 'all'] as const) {
-      const button = modes.createEl('button', { text: t(mode === 'current' ? 'wiki.modeCurrent' : 'wiki.modeAll'),
-        cls: `wiki-mode-btn${this.mode === mode ? ' is-active' : ''}` });
-      button.addEventListener('click', () => { this.mode = mode; void this.refresh(); });
-    }
-    this.contentEl.createEl('p', { text: this.mode === 'current' ? this.note?.path ?? t('share.noActive') : t('wiki.modeAll'), cls: 'orphan-path' });
+    this.convertButton = null;
+    this.allCheckbox = null;
+    const toolbar = this.contentEl.createDiv({ cls: 'ti-toolbar' });
+    const context = toolbar.createDiv({ cls: 'ti-context' });
+    const modeSelect = context.createEl('select', { attr: { 'aria-label': t('wiki.modeCurrent') + ' / ' + t('wiki.modeAll') } });
+    modeSelect.createEl('option', { value: 'current', text: t('wiki.modeCurrent') }).disabled = !this.note;
+    modeSelect.createEl('option', { value: 'all', text: t('wiki.modeAll') });
+    modeSelect.value = this.mode;
+    modeSelect.addEventListener('change', () => { this.mode = modeSelect.value as 'current' | 'all'; void this.refresh(); });
+    const noteLabel = context.createSpan({ text: this.mode === 'current' ? this.note?.basename ?? t('share.noActive') : t('wiki.modeAll'), cls: 'ti-context-name' });
+    if (this.mode === 'current' && this.note) noteLabel.title = this.note.path;
+    const refresh = toolbar.createEl('button', { cls: 'ti-icon-button', attr: { 'aria-label': t('orphan.refresh'), title: t('orphan.refresh') } });
+    setIcon(refresh, 'refresh-cw');
+    refresh.addEventListener('click', () => void this.refresh());
     const convertible = this.items.filter(item => !item.reason).length;
-    this.contentEl.createEl('p', { text: t('wiki.resultSummary', { convertible, missing: this.missing, retained: this.items.length - convertible }) });
+    if (!this.items.length) {
+      this.renderEmpty(this.missing ? 'image-off' : 'circle-check', this.missing
+        ? isZh() ? '图片引用需要先修复' : 'Image references need repair'
+        : t('wiki.empty'), this.missing
+        ? isZh() ? `${this.missing} 处引用未找到图片，请到图片检查处理。` : `${this.missing} references have missing images. Open Image Check to resolve them.`
+        : isZh() ? '当前范围没有需要转换的 Wiki 图片引用。' : 'No Wiki image references to convert in this scope.');
+    } else {
+      this.contentEl.createEl('p', { text: t('wiki.resultSummary', { convertible, missing: this.missing, retained: this.items.length - convertible }), cls: 'ti-summary' });
+      if (convertible) {
+        const batch = this.contentEl.createDiv({ cls: 'ti-batch' });
+        const label = batch.createEl('label', { cls: 'ti-select-all' });
+        this.allCheckbox = label.createEl('input', { type: 'checkbox' });
+        this.allCheckbox.checked = true;
+        label.createSpan({ text: t('orphan.selectAll') });
+        this.allCheckbox.addEventListener('change', () => {
+          for (const checkbox of this.checkboxes.values()) checkbox.checked = this.allCheckbox!.checked;
+          this.updateButton();
+        });
+      }
+      const list = this.contentEl.createDiv({ cls: 'ti-list' });
+      this.items.forEach((item, index) => {
+        const row = list.createDiv({ cls: 'ti-card' });
+        const header = row.createDiv({ cls: 'ti-toolbar' });
+        const identity = header.createDiv({ cls: 'ti-context' });
+        if (!item.reason) {
+          const checkbox = identity.createEl('input', { type: 'checkbox', attr: { 'aria-label': item.image.name } });
+          checkbox.checked = true;
+          this.checkboxes.set(index, checkbox);
+          checkbox.addEventListener('change', () => this.updateButton());
+        }
+        identity.createEl('strong', { text: item.image.name });
+        const locate = header.createEl('button', { text: `${item.note.basename} · ${item.line}`, cls: 'ti-location', attr: { title: `${item.note.path}:${item.line}` } });
+        locate.addEventListener('click', async () => {
+          const leaf = this.app.workspace.getLeaf('tab');
+          await leaf.openFile(item.note);
+          if (leaf.view instanceof MarkdownView && leaf.view.getMode() === 'source') {
+            const line = item.line - 1;
+            leaf.view.editor.setCursor(line, 0);
+            leaf.view.editor.scrollIntoView({ from: { line, ch: 0 }, to: { line, ch: 0 } }, true);
+          }
+        });
+        row.createEl('code', { text: item.raw, cls: 'ti-reference' });
+        const file = row.createDiv({ cls: 'ti-file' });
+        const preview = file.createEl('img', { cls: 'ti-thumbnail', attr: { alt: item.image.name } });
+        preview.src = this.app.vault.getResourcePath(item.image);
+        file.createDiv({ text: item.image.path, cls: 'ti-file-info ti-path' });
+        if (item.reason) row.createEl('p', { text: t(item.reason === 'size' ? 'wiki.sizeRetained' : 'wiki.nameRetained'), cls: 'ti-muted' });
+      });
+    }
+    const footer = this.contentEl.createDiv({ cls: 'ti-footer' });
     if (this.missing || this.items.some(item => item.reason === 'name')) {
-      const check = this.contentEl.createEl('button', { text: t('wiki.openCheck') });
+      const check = footer.createEl('button', { text: t('wiki.openCheck') });
       check.addEventListener('click', () => {
         this.close();
         new ImageCheckModal(this.app, this.settings, this.saveSettings, 'issues', this.note, this.mode).open();
       });
-    }
-    if (!this.items.length) this.contentEl.createEl('p', { text: t('wiki.empty') });
+    } else if (this.items.length) footer.createSpan({ text: t('wiki.formatOnly'), cls: 'ti-muted' });
+    const actions = footer.createDiv({ cls: 'ti-footer-actions' });
+    actions.createEl('button', { text: t('orphan.cancel'), cls: 'ti-secondary-action' }).addEventListener('click', () => this.close());
     if (convertible) {
-      const label = this.contentEl.createEl('label', { cls: 'orphan-select-all-label' });
-      const all = label.createEl('input', { type: 'checkbox' });
-      all.checked = true;
-      label.createSpan({ text: t('orphan.selectAll') });
-      all.addEventListener('change', () => {
-        for (const checkbox of this.checkboxes.values()) checkbox.checked = all.checked;
-        this.updateButton();
-      });
+      this.convertButton = actions.createEl('button', { cls: 'mod-cta' });
+      this.convertButton.addEventListener('click', () => void this.convert());
+      this.updateButton();
     }
-    const list = this.contentEl.createDiv({ cls: 'orphan-list' });
-    this.items.forEach((item, index) => {
-      const row = list.createDiv({ cls: 'orphan-item' });
-      if (!item.reason) {
-        const checkbox = row.createEl('input', { type: 'checkbox', cls: 'orphan-checkbox' });
-        checkbox.checked = true;
-        this.checkboxes.set(index, checkbox);
-        checkbox.addEventListener('change', () => this.updateButton());
-      }
-      const preview = row.createEl('img', { cls: 'orphan-thumbnail' });
-      preview.src = this.app.vault.getResourcePath(item.image);
-      preview.alt = item.alt;
-      const info = row.createDiv({ cls: 'orphan-info' });
-      info.createDiv({ text: item.raw, cls: 'orphan-path' });
-      info.createDiv({ text: `${item.note.path}:${item.line}`, cls: 'orphan-size' });
-      info.createDiv({ text: item.image.path, cls: 'orphan-size' });
-      if (item.reason) info.createDiv({ text: t(item.reason === 'size' ? 'wiki.sizeRetained' : 'wiki.nameRetained'), cls: 'orphan-size' });
-      const locate = row.createEl('button', { text: t('orphan.locateNote') });
-      locate.addEventListener('click', async () => {
-        const leaf = this.app.workspace.getLeaf();
-        await leaf.openFile(item.note);
-        if (leaf.view instanceof MarkdownView && leaf.view.getMode() === 'source') {
-          const line = item.line - 1;
-          leaf.view.editor.setCursor(line, 0);
-          leaf.view.editor.scrollIntoView({ from: { line, ch: 0 }, to: { line, ch: 0 } }, true);
-        }
-      });
-    });
-    const footer = this.contentEl.createDiv({ cls: 'orphan-footer' });
-    footer.createEl('button', { text: t('orphan.cancel') }).addEventListener('click', () => this.close());
-    footer.createEl('button', { text: t('orphan.refresh') }).addEventListener('click', () => void this.refresh());
-    this.convertButton = footer.createEl('button', { cls: 'mod-cta' });
-    this.convertButton.addEventListener('click', () => void this.convert());
-    this.updateButton();
   }
 
   private updateButton(): void {
     const count = [...this.checkboxes.values()].filter(checkbox => checkbox.checked).length;
-    this.convertButton.textContent = t(this.mode === 'current' ? 'wiki.convertCurrentCount' : 'wiki.convertAllCount', { count });
-    this.convertButton.disabled = count === 0;
+    if (this.convertButton) {
+      this.convertButton.textContent = t(this.mode === 'current' ? 'wiki.convertCurrentCount' : 'wiki.convertAllCount', { count });
+      this.convertButton.disabled = count === 0;
+    }
+    if (this.allCheckbox) {
+      this.allCheckbox.checked = count === this.checkboxes.size;
+      this.allCheckbox.indeterminate = count > 0 && count < this.checkboxes.size;
+    }
   }
 
   private async convert(): Promise<void> {

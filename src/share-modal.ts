@@ -1,4 +1,4 @@
-import { App, Modal, Notice, TFile, Setting } from 'obsidian';
+import { App, Modal, Notice, TFile, Setting, setIcon } from 'obsidian';
 import { TyporianSettings } from '../settings';
 import { ShareManager } from './share-manager';
 import { t, isZh } from './locale';
@@ -17,20 +17,31 @@ export class ShareModal extends Modal {
 
   onOpen(): void {
     const { contentEl } = this;
+    this.containerEl.addClasses(['typorian-ui', 'typorian-share-modal']);
     this.titleEl.setText(t('share.title'));
 
     // Get active note
     const file = this.app.workspace.getActiveFile();
     if (!(file instanceof TFile) || file.extension !== 'md') {
-      contentEl.createEl('p', { text: t('share.noActive') });
+      const empty = contentEl.createDiv({ cls: 'ti-empty' });
+      setIcon(empty.createDiv({ cls: 'ti-empty-icon' }), 'file-text');
+      empty.createEl('p', { text: t('share.noActive') });
       return;
     }
 
     this.exportPath = (file.parent?.path ?? '').replace(/^\/+$/, '');
 
+    contentEl.createEl('p', { cls: 'ti-intro', text: isZh()
+      ? '将当前笔记和引用的图片打包，方便分享。原笔记和图片保留。'
+      : 'Package the current note and its images for sharing. Original files are retained.' });
+    const context = contentEl.createDiv({ cls: 'ti-context' });
+    context.createSpan({ cls: 'ti-muted', text: isZh() ? '分享笔记' : 'Note to share' });
+    context.createSpan({ text: file.basename, attr: { title: file.path } });
+    const form = contentEl.createDiv({ cls: 'ti-form-group' });
+
     // Export format
-    new Setting(contentEl)
-      .setName(t('share.folderFormat'))
+    new Setting(form)
+      .setName(isZh() ? '打包格式' : 'Package format')
       .addDropdown((dropdown) => {
         dropdown.addOption('folder', t('share.folderFormat'));
         dropdown.addOption('zip', t('share.zipFormat'));
@@ -41,7 +52,7 @@ export class ShareModal extends Modal {
       });
 
     // Export destination is always a vault-relative directory.
-    new Setting(contentEl)
+    new Setting(form)
       .setName(t('share.exportPath'))
       .setDesc(t('share.exportPath.desc'))
       .addText((text) => {
@@ -53,7 +64,7 @@ export class ShareModal extends Modal {
       });
 
     // Open folder after export toggle
-    new Setting(contentEl)
+    new Setting(form)
       .setName(t('share.openFolder'))
       .setDesc(t('share.openFolder.desc'))
       .addToggle((toggle) => {
@@ -65,9 +76,12 @@ export class ShareModal extends Modal {
       });
 
     // Export button
-    const btnContainer = contentEl.createDiv({ cls: 'share-btn-container' });
-    const exportBtn = btnContainer.createEl('button', {
-      text: t('share.title'),
+    const footer = contentEl.createDiv({ cls: 'ti-footer' });
+    const actions = footer.createDiv({ cls: 'ti-footer-actions' });
+    const cancel = actions.createEl('button', { text: isZh() ? '取消' : 'Cancel', cls: 'ti-secondary-action' });
+    cancel.addEventListener('click', () => this.close());
+    const exportBtn = actions.createEl('button', {
+      text: isZh() ? '导出笔记' : 'Export note',
       cls: 'mod-cta',
     });
     exportBtn.addEventListener('click', async () => {
@@ -101,12 +115,13 @@ export class ShareModal extends Modal {
         new Notice(t('share.error', { message: String(err) }));
         contentEl.inert = false;
         exportBtn.disabled = false;
-        exportBtn.textContent = t('share.title');
+        exportBtn.textContent = isZh() ? '导出笔记' : 'Export note';
       }
     });
   }
 
   onClose(): void {
+    this.containerEl.removeClasses(['typorian-ui', 'typorian-share-modal']);
     this.contentEl.inert = false;
     this.contentEl.empty();
   }
