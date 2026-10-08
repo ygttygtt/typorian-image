@@ -1,5 +1,5 @@
 import { App, Modal, Notice } from 'obsidian';
-import { TyporianSettings } from './settings';
+import { TyporianSettings } from '../settings';
 import { RestructureManager, RestructurePlan } from './restructure-manager';
 import { t } from './locale';
 
@@ -11,6 +11,7 @@ export class RestructureModal extends Modal {
   private checkboxes = new Map<string, HTMLInputElement>();
   private selectAllCheckbox: HTMLInputElement | null = null;
   private summaryEl: HTMLElement | null = null;
+  private refreshApplyState: (() => void) | null = null;
 
   constructor(app: App, settings: TyporianSettings) {
     super(app);
@@ -58,6 +59,7 @@ export class RestructureModal extends Modal {
     headerRow.createEl('th', { text: t('restructure.table.images'), cls: 'restructure-th-images' });
 
     const tbody = table.createEl('tbody');
+    const targetCells = new Map<string, HTMLElement>();
 
     for (const entry of this.plan.noteEntries) {
       const tr = tbody.createEl('tr');
@@ -80,13 +82,13 @@ export class RestructureModal extends Modal {
       }
 
       // Note name cell
-      const noteName = entry.sourcePath.split('/').pop() || entry.sourcePath;
+      const noteName = entry.sourcePath;
       tr.createEl('td', { text: noteName, cls: 'restructure-td-note' });
 
       // Target path cell
-      const baseName = noteName?.replace(/\.md$/, '') || '';
+      const baseName = noteName.split('/').pop()!.replace(/\.md$/, '');
       const assetsPath = entry.targetPath.replace(/[^/]+$/, `${baseName}.assets/`);
-      tr.createEl('td', { text: assetsPath, cls: 'restructure-td-assets' });
+      targetCells.set(entry.sourcePath, tr.createEl('td', { text: assetsPath, cls: 'restructure-td-assets' }));
 
       // Image count cell
       if (hasImages) {
@@ -120,7 +122,7 @@ export class RestructureModal extends Modal {
 
     // Warning text (changes based on mode)
     const warningEl = contentEl.createEl('p', {
-      text: t('restructure.modeSandboxDesc'),
+      text: t('restructure.modeSandboxDesc', { path: this.plan!.outputDir }),
       cls: 'restructure-warning',
     });
     // Move warning before footer
@@ -142,6 +144,11 @@ export class RestructureModal extends Modal {
 
     // Update UI based on mode
     const updateMode = () => {
+      for (const entry of this.plan!.noteEntries) {
+        const noteName = entry.sourcePath.split('/').pop()!.replace(/\.md$/, '');
+        const path = isOverwriteMode ? entry.sourcePath : entry.targetPath;
+        targetCells.get(entry.sourcePath)!.setText(path.replace(/[^/]+$/, `${noteName}.assets/`));
+      }
       if (isOverwriteMode) {
         confirmInput.style.display = '';
         applyBtn.disabled = confirmInput.value !== 'confirm' || this.selectedNotes.size === 0;
@@ -150,10 +157,12 @@ export class RestructureModal extends Modal {
       } else {
         confirmInput.style.display = 'none';
         applyBtn.disabled = this.selectedNotes.size === 0;
-        warningEl.setText(t('restructure.modeSandboxDesc'));
+        warningEl.setText(t('restructure.modeSandboxDesc', { path: this.plan!.outputDir }));
         warningEl.removeClass('restructure-warning-overwrite');
       }
     };
+
+    this.refreshApplyState = updateMode;
 
     modeToggleEl.addEventListener('click', () => {
       isOverwriteMode = !isOverwriteMode;
@@ -170,34 +179,26 @@ export class RestructureModal extends Modal {
     applyBtn.addEventListener('click', async () => {
       if (!this.plan || this.selectedNotes.size === 0) return;
 
-      // Overwrite mode: check for orphan images
-      if (isOverwriteMode) {
-        const { OrphanDetector } = await import('./orphan-detector');
-        const detector = new OrphanDetector(this.app);
-        const orphans = await detector.scan();
-        if (orphans.length > 0) {
-          new Notice(t('restructure.orphanBlock'));
-          return;
-        }
-      }
-
       applyBtn.disabled = true;
+      contentEl.inert = true;
+      const selected = new Set(this.selectedNotes);
       try {
         if (isOverwriteMode) {
           const total = this.selectedNotes.size;
           applyBtn.textContent = `0/${total}`;
-          const processed = await this.manager.applyOverwrite(this.plan, this.selectedNotes, (current) => {
+          const processed = await this.manager.applyOverwrite(this.plan, selected, (current) => {
             applyBtn.textContent = `${current}/${total}`;
           });
-          new Notice(t('restructure.success', { path: 'original vault' }));
+          new Notice(t('restructure.overwriteSuccess', { count: processed }));
         } else {
-          await this.manager.apply(this.plan, this.selectedNotes);
-          new Notice(t('restructure.success', { path: '_Restructured_Vault/' }));
+          const outputPath = await this.manager.apply(this.plan, selected);
+          new Notice(t('restructure.success', { path: outputPath }));
         }
         this.close();
       } catch (err) {
         new Notice(String(err));
-        applyBtn.disabled = false;
+        contentEl.inert = false;
+        updateMode();
         applyBtn.textContent = t('restructure.apply');
       }
     });
@@ -213,6 +214,7 @@ export class RestructureModal extends Modal {
       this.selectAllCheckbox.checked = checkable.length > 0 && checkable.every((cb) => cb.checked);
     }
     this.updateSummary();
+    this.refreshApplyState?.();
   }
 
   private updateSummary(): void {
@@ -223,6 +225,10 @@ export class RestructureModal extends Modal {
 
   onClose(): void {
     this.containerEl.removeClass('typorian-restructure-modal');
+    this.contentEl.inert = false;
     this.contentEl.empty();
+    this.refreshApplyState = null;
+    this.selectedNotes.clear();
+    this.checkboxes.clear();
   }
 }

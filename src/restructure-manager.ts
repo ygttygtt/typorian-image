@@ -1,14 +1,13 @@
 import { App, TFile, normalizePath } from 'obsidian';
-import { TyporianSettings } from './settings';
-import { IMAGE_EXTENSIONS } from './orphan-types';
-
-const MD_IMAGE_REGEX = /!\[([^\]]*)\]\(([^)]+)\)/g;
-const WIKI_EMBED_REGEX = /!\[\[([^\]|]+?)(?:\|([^\]]*?))?\]\]/g;
+import { TyporianSettings } from '../settings';
+import { PathUtils } from './path-utils';
+import { assignImageNames, collectImageReferences, ImageReference, rewriteImageReferences } from './share-manager';
 
 export interface RestructureEntry {
   sourcePath: string;
   targetPath: string;
   type: 'note' | 'image';
+  notePath: string;
   imageCount?: number;
 }
 
@@ -17,337 +16,120 @@ export interface RestructurePlan {
   noteEntries: RestructureEntry[];
   totalNotes: number;
   totalImages: number;
+  outputDir: string;
 }
 
 export class RestructureManager {
-  private sandboxDir = '_Restructured_Vault';
+  constructor(private app: App, private settings: TyporianSettings) {}
 
-  constructor(
-    private app: App,
-    private settings: TyporianSettings
-  ) {}
-
-  /**
-   * Preview: scan all notes and compute what would change.
-   */
   async preview(): Promise<RestructurePlan> {
+    const outputDir = await this.uniqueOutputDir();
     const entries: RestructureEntry[] = [];
     const noteEntries: RestructureEntry[] = [];
-    const mdFiles = this.app.vault.getMarkdownFiles();
-    const processedImages = new Set<string>();
-
-    for (const mdFile of mdFiles) {
-      const noteDir = (mdFile.parent?.path ?? '').replace(/^\/+$/, '');
-      const targetNoteDir = noteDir ? `${this.sandboxDir}/${noteDir}` : this.sandboxDir;
-
-      const content = await this.app.vault.read(mdFile);
-      let match: RegExpExecArray | null;
-      MD_IMAGE_REGEX.lastIndex = 0;
-
-      let imageCount = 0;
-      const noteImagePaths: string[] = [];
-
-      while ((match = MD_IMAGE_REGEX.exec(content)) !== null) {
-        const rawPath = match[2];
-        if (rawPath.startsWith('http://') || rawPath.startsWith('https://')) continue;
-
-        const resolvedPath = this.resolveImagePath(noteDir, rawPath);
-        if (!resolvedPath) continue;
-
-        if (!processedImages.has(resolvedPath)) {
-          const sourceFile = this.app.vault.getAbstractFileByPath(normalizePath(resolvedPath));
-          if (sourceFile instanceof TFile) {
-            processedImages.add(resolvedPath);
-            noteImagePaths.push(sourceFile.path);
-          }
-        }
-        imageCount++;
-      }
-
-      // Also scan wiki embed links
-      WIKI_EMBED_REGEX.lastIndex = 0;
-      while ((match = WIKI_EMBED_REGEX.exec(content)) !== null) {
-        const rawPath = match[1].trim();
-        if (!rawPath || rawPath.startsWith('http')) continue;
-
-        const resolved = this.app.metadataCache.getFirstLinkpathDest(rawPath, mdFile.path);
-        if (!resolved) continue;
-
-        if (!IMAGE_EXTENSIONS.has(resolved.extension.toLowerCase())) continue;
-
-        if (!processedImages.has(resolved.path)) {
-          processedImages.add(resolved.path);
-          noteImagePaths.push(resolved.path);
-        }
-        imageCount++;
-      }
-
+    const mdFiles = this.app.vault.getMarkdownFiles().filter(file => !this.isOutputNote(file.path));
+    let totalImages = 0;
+    for (const note of mdFiles) {
+      const refs = collectImageReferences(this.app, note, await this.app.vault.read(note), this.settings.manualAttachmentFolder);
+      const names = assignImageNames(refs);
+      const targetPath = `${outputDir}/${note.path}`;
       const noteEntry: RestructureEntry = {
-        sourcePath: mdFile.path,
-        targetPath: `${targetNoteDir}/${mdFile.name}`,
-        type: 'note',
-        imageCount,
+        sourcePath: note.path, targetPath, type: 'note', notePath: note.path, imageCount: names.size,
       };
       entries.push(noteEntry);
       noteEntries.push(noteEntry);
-
-      for (const imgPath of noteImagePaths) {
-        const sourceFile = this.app.vault.getAbstractFileByPath(imgPath);
-        if (!(sourceFile instanceof TFile)) continue;
-        const targetAssetsDir = `${targetNoteDir}/${mdFile.basename}.assets`;
+      const targetDir = targetPath.substring(0, targetPath.lastIndexOf('/'));
+      for (const [sourcePath, name] of names) {
         entries.push({
-          sourcePath: sourceFile.path,
-          targetPath: `${targetAssetsDir}/${sourceFile.name}`,
-          type: 'image',
+          sourcePath, targetPath: `${targetDir}/${note.basename}.assets/${name}`,
+          type: 'image', notePath: note.path,
         });
       }
+      totalImages += names.size;
     }
-
-    return { entries, noteEntries, totalNotes: mdFiles.length, totalImages: processedImages.size };
+    return { entries, noteEntries, totalNotes: mdFiles.length, totalImages, outputDir };
   }
 
-  /**
-   * Apply: copy selected notes and their images to sandbox.
-   */
-  async apply(plan: RestructurePlan, selectedPaths: Set<string>): Promise<void> {
-    await this.ensureDir(this.sandboxDir);
-
-    const noteEntries = plan.entries.filter(
-      (e) => e.type === 'note' && selectedPaths.has(e.sourcePath)
-    );
-
-    for (const entry of noteEntries) {
-      const sourceFile = this.app.vault.getAbstractFileByPath(entry.sourcePath);
-      if (!(sourceFile instanceof TFile)) continue;
-
-      const content = await this.app.vault.read(sourceFile);
-      const noteDir = (sourceFile.parent?.path ?? '').replace(/^\/+$/, '');
-      const targetNoteDir = noteDir ? `${this.sandboxDir}/${noteDir}` : this.sandboxDir;
-
-      let newContent = content;
-      const replacements: Array<{ from: number; to: number; insert: string }> = [];
-      let match: RegExpExecArray | null;
-      MD_IMAGE_REGEX.lastIndex = 0;
-
-      while ((match = MD_IMAGE_REGEX.exec(content)) !== null) {
-        const rawPath = match[2];
-        if (rawPath.startsWith('http://') || rawPath.startsWith('https://')) continue;
-
-        const fileName = this.extractFileName(rawPath);
-        const newRelPath = `${sourceFile.basename}.assets/${fileName}`;
-        replacements.push({
-          from: match.index,
-          to: match.index + match[0].length,
-          insert: `![${match[1]}](${newRelPath})`,
-        });
-      }
-
-      // Also handle wiki embed links
-      WIKI_EMBED_REGEX.lastIndex = 0;
-      while ((match = WIKI_EMBED_REGEX.exec(content)) !== null) {
-        const rawPath = match[1].trim();
-        if (!rawPath || rawPath.startsWith('http')) continue;
-
-        const resolved = this.app.metadataCache.getFirstLinkpathDest(rawPath, sourceFile.path);
-        if (!resolved) continue;
-
-        if (!IMAGE_EXTENSIONS.has(resolved.extension.toLowerCase())) continue;
-
-        const fileName = resolved.name;
-        const newRelPath = `${sourceFile.basename}.assets/${fileName}`;
-        replacements.push({
-          from: match.index,
-          to: match.index + match[0].length,
-          insert: `![${match[2] || ''}](${newRelPath})`,
-        });
-      }
-
-      replacements.sort((a, b) => b.from - a.from);
-      for (const r of replacements) {
-        newContent = newContent.substring(0, r.from) + r.insert + newContent.substring(r.to);
-      }
-
-      await this.ensureDir(targetNoteDir);
-      await this.app.vault.create(normalizePath(entry.targetPath), newContent);
-
-      // Copy images for this note
-      for (const imgEntry of plan.entries.filter(
-        (e) => e.type === 'image' && e.targetPath.startsWith(targetNoteDir + '/')
-      )) {
-        const imgFile = this.app.vault.getAbstractFileByPath(imgEntry.sourcePath);
-        if (!(imgFile instanceof TFile)) continue;
-        const data = await this.app.vault.readBinary(imgFile);
-        const imgTargetDir = imgEntry.targetPath.substring(0, imgEntry.targetPath.lastIndexOf('/'));
-        await this.ensureDir(imgTargetDir);
-        await this.app.vault.createBinary(normalizePath(imgEntry.targetPath), data);
-      }
+  /** Each selected note receives its own complete attachment set in a new output directory. */
+  async apply(plan: RestructurePlan, selectedPaths: Set<string>): Promise<string> {
+    const outputDir = await this.uniqueOutputDir();
+    await this.ensureDir(outputDir);
+    for (const entry of plan.noteEntries.filter(e => selectedPaths.has(e.sourcePath))) {
+      const note = this.app.vault.getAbstractFileByPath(entry.sourcePath);
+      if (!(note instanceof TFile)) throw new Error(entry.sourcePath);
+      const content = await this.app.vault.read(note);
+      const refs = collectImageReferences(this.app, note, content, this.settings.manualAttachmentFolder);
+      const noteTarget = `${outputDir}/${note.path}`;
+      const targetDir = noteTarget.substring(0, noteTarget.lastIndexOf('/'));
+      await this.ensureDir(targetDir);
+      const paths = await this.copyImages(note, refs, `${targetDir}/${note.basename}.assets`);
+      await this.app.vault.create(normalizePath(noteTarget), rewriteImageReferences(content, refs, paths));
     }
+    return outputDir;
   }
 
-  /**
-   * Apply overwrite: restructure in-place, then delete originals.
-   * WARNING: This modifies the original vault structure.
-   */
+  /** Original images remain available for unselected notes and other kinds of links. */
   async applyOverwrite(
     plan: RestructurePlan,
     selectedPaths: Set<string>,
     onProgress?: (current: number, total: number) => void
   ): Promise<number> {
+    const entries = plan.noteEntries.filter(e => selectedPaths.has(e.sourcePath));
     let processed = 0;
-
-    const noteEntries = plan.entries.filter(
-      (e) => e.type === 'note' && selectedPaths.has(e.sourcePath)
-    );
-
-    const trashOriginals: TFile[] = [];
-
-    for (const entry of noteEntries) {
-      const sourceFile = this.app.vault.getAbstractFileByPath(entry.sourcePath);
-      if (!(sourceFile instanceof TFile)) continue;
-
-      const content = await this.app.vault.read(sourceFile);
-      const noteDir = (sourceFile.parent?.path ?? '').replace(/^\/+$/, '');
-
-      // Rewrite image links to new .assets/ paths
-      let newContent = content;
-      const replacements: Array<{ from: number; to: number; insert: string }> = [];
-      let match: RegExpExecArray | null;
-      MD_IMAGE_REGEX.lastIndex = 0;
-
-      while ((match = MD_IMAGE_REGEX.exec(content)) !== null) {
-        const rawPath = match[2];
-        if (rawPath.startsWith('http://') || rawPath.startsWith('https://')) continue;
-
-        const fileName = this.extractFileName(rawPath);
-        const newRelPath = `${sourceFile.basename}.assets/${fileName}`;
-        replacements.push({
-          from: match.index,
-          to: match.index + match[0].length,
-          insert: `![${match[1]}](${newRelPath})`,
-        });
-      }
-
-      // Also handle wiki embed links
-      WIKI_EMBED_REGEX.lastIndex = 0;
-      while ((match = WIKI_EMBED_REGEX.exec(content)) !== null) {
-        const rawPath = match[1].trim();
-        if (!rawPath || rawPath.startsWith('http')) continue;
-
-        const resolved = this.app.metadataCache.getFirstLinkpathDest(rawPath, sourceFile.path);
-        if (!resolved) continue;
-
-        if (!IMAGE_EXTENSIONS.has(resolved.extension.toLowerCase())) continue;
-
-        const fileName = resolved.name;
-        const newRelPath = `${sourceFile.basename}.assets/${fileName}`;
-        replacements.push({
-          from: match.index,
-          to: match.index + match[0].length,
-          insert: `![${match[2] || ''}](${newRelPath})`,
-        });
-      }
-
-      replacements.sort((a, b) => b.from - a.from);
-      for (const r of replacements) {
-        newContent = newContent.substring(0, r.from) + r.insert + newContent.substring(r.to);
-      }
-
-      // Create .assets directory next to the note
-      const assetsDir = noteDir
-        ? `${noteDir}/${sourceFile.basename}.assets`
-        : `${sourceFile.basename}.assets`;
-      await this.ensureDir(assetsDir);
-
-      // Re-scan note content for image references, resolve and copy only those
-      MD_IMAGE_REGEX.lastIndex = 0;
-      const copiedImages = new Set<string>();
-      while ((match = MD_IMAGE_REGEX.exec(content)) !== null) {
-        const rawPath = match[2];
-        if (rawPath.startsWith('http://') || rawPath.startsWith('https://')) continue;
-
-        const resolvedPath = this.resolveImagePath(noteDir, rawPath);
-        if (!resolvedPath || copiedImages.has(resolvedPath)) continue;
-
-        const imgFile = this.app.vault.getAbstractFileByPath(normalizePath(resolvedPath));
-        if (!(imgFile instanceof TFile)) continue;
-        // Skip if already in the correct .assets directory
-        if (imgFile.parent?.path === assetsDir) continue;
-
-        copiedImages.add(resolvedPath);
-        const data = await this.app.vault.readBinary(imgFile);
-        const targetImgPath = normalizePath(`${assetsDir}/${imgFile.name}`);
-        const existing = this.app.vault.getAbstractFileByPath(targetImgPath);
-        if (!existing) {
-          await this.app.vault.createBinary(targetImgPath, data);
-        }
-        trashOriginals.push(imgFile);
-      }
-
-      // Also re-scan wiki embed links for image copying
-      WIKI_EMBED_REGEX.lastIndex = 0;
-      while ((match = WIKI_EMBED_REGEX.exec(content)) !== null) {
-        const rawPath = match[1].trim();
-        if (!rawPath || rawPath.startsWith('http')) continue;
-
-        const resolved = this.app.metadataCache.getFirstLinkpathDest(rawPath, sourceFile.path);
-        if (!resolved) continue;
-
-        if (!IMAGE_EXTENSIONS.has(resolved.extension.toLowerCase())) continue;
-        if (copiedImages.has(resolved.path)) continue;
-
-        const imgFile = this.app.vault.getAbstractFileByPath(resolved.path);
-        if (!(imgFile instanceof TFile)) continue;
-        // Skip if already in the correct .assets directory
-        if (imgFile.parent?.path === assetsDir) continue;
-
-        copiedImages.add(resolved.path);
-        const data = await this.app.vault.readBinary(imgFile);
-        const targetImgPath = normalizePath(`${assetsDir}/${imgFile.name}`);
-        const existingFile = this.app.vault.getAbstractFileByPath(targetImgPath);
-        if (!existingFile) {
-          await this.app.vault.createBinary(targetImgPath, data);
-        }
-        trashOriginals.push(imgFile);
-      }
-
-      // Update the note content with new image paths
-      await this.app.vault.modify(sourceFile, newContent);
+    for (const entry of entries) {
+      const note = this.app.vault.getAbstractFileByPath(entry.sourcePath);
+      if (!(note instanceof TFile)) throw new Error(entry.sourcePath);
+      const content = await this.app.vault.read(note);
+      const refs = collectImageReferences(this.app, note, content, this.settings.manualAttachmentFolder);
+      const noteDir = (note.parent?.path ?? '').replace(/^\/+$/, '');
+      const assetsDir = normalizePath(noteDir ? `${noteDir}/${note.basename}.assets` : `${note.basename}.assets`);
+      const paths = await this.copyImages(note, refs, assetsDir);
+      const newContent = rewriteImageReferences(content, refs, paths);
+      if (newContent !== content) await this.app.vault.modify(note, newContent);
       processed++;
-      if (onProgress) onProgress(processed, noteEntries.length);
+      onProgress?.(processed, entries.length);
     }
-
-    // Phase 2: Trash original image files that were copied to new .assets directories
-    for (const file of trashOriginals) {
-      // Don't trash if the file is already in an .assets directory
-      if (file.parent?.path?.endsWith('.assets')) continue;
-      await this.app.vault.trash(file, false);
-    }
-
     return processed;
   }
 
-  private resolveImagePath(noteDir: string, rawPath: string): string | null {
-    let path = rawPath.replace(/\\/g, '/');
-    path = path.replace(/^[A-Za-z]:\//, '');
-    path = path.replace(/^\/+/, '');
-    path = path.replace(/%20/g, ' ');
-    if (path.startsWith('./')) path = path.substring(2);
-    // Normalize noteDir: treat '/' same as '' (root)
-    noteDir = noteDir.replace(/^\/+$/, '');
-    return noteDir ? `${noteDir}/${path}` : path;
+  private async copyImages(note: TFile, refs: ImageReference[], assetsDir: string): Promise<Map<string, string>> {
+    const paths = new Map<string, string>();
+    const names = assignImageNames(refs);
+    if (refs.length > 0) await this.ensureDir(assetsDir);
+    for (const { sourceFile } of refs) {
+      if (paths.has(sourceFile.path)) continue;
+      let targetPath = sourceFile.path;
+      const preferred = names.get(sourceFile.path)!;
+      if (sourceFile.parent?.path !== assetsDir || preferred !== sourceFile.name) {
+        const basename = preferred.substring(0, preferred.lastIndexOf('.'));
+        const name = await PathUtils.getUniqueFileName(this.app.vault, assetsDir, basename, sourceFile.extension);
+        targetPath = normalizePath(`${assetsDir}/${name}`);
+        await this.app.vault.createBinary(targetPath, await this.app.vault.readBinary(sourceFile));
+      }
+      // Relative links are based on the original directory, shared by its sandbox copy.
+      paths.set(sourceFile.path, `${note.basename}.assets/${targetPath.substring(targetPath.lastIndexOf('/') + 1)}`);
+    }
+    return paths;
   }
 
-  private extractFileName(rawPath: string): string {
-    const cleaned = rawPath.replace(/\\/g, '/').replace(/%20/g, ' ');
-    const parts = cleaned.split('/');
-    return parts[parts.length - 1] || 'image.png';
+  private isOutputNote(path: string): boolean {
+    const root = normalizePath(this.settings.restructureOutputFolder).replace(/\/$/, '');
+    const escaped = root.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`^${escaped}(?:\\(\\d+\\))?/`).test(path);
+  }
+
+  private async uniqueOutputDir(): Promise<string> {
+    const base = normalizePath(this.settings.restructureOutputFolder).replace(/\/$/, '');
+    let path = base;
+    let counter = 1;
+    while (await this.app.vault.adapter.exists(path)) path = `${base}(${counter++})`;
+    return path;
   }
 
   private async ensureDir(path: string): Promise<void> {
-    const normalized = normalizePath(path);
-    const exists = await this.app.vault.adapter.exists(normalized);
-    if (!exists) {
-      await this.app.vault.adapter.mkdir(normalized);
+    let current = '';
+    for (const part of path.split('/').filter(Boolean)) {
+      current = current ? `${current}/${part}` : part;
+      if (!(await this.app.vault.adapter.exists(current))) await this.app.vault.createFolder(current);
     }
   }
 }

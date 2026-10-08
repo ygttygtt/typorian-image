@@ -450,3 +450,8 @@
   width: 18px;
   flex-shrink: 0;
 }
+/* Hide the entire folder subtree, only inside the core file explorer. */
+body.typorian-hide-assets .workspace-leaf-content[data-type="file-explorer"]
+.nav-folder:has(> .nav-folder-title[data-path$=".assets"]) {
+  display: none;
+}

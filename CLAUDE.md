@@ -1,184 +1,90 @@
-# CLAUDE.md
+# Repository guidance
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+## Scope and verification
 
-## Project
+Typorian Image is an Obsidian plugin for Typora-compatible Markdown images. Current source version: **1.7.0**. Consult `docs/superpowers/plans/2026-10-08-image-workflow-optimization.md` and `docs/optimization-review-2026-10-08.md` for implementation and acceptance status. A package version, successful build, commit, installation, and desktop acceptance are different milestones.
 
-Typorian Image — an Obsidian plugin that enforces standard Markdown image syntax with Typora-compatible `.assets` folder paths. Intercepts paste/drop events, saves images to `${notename}.assets/`, and inserts `![name](path)` instead of `![[name]]`.
+Follow the user's applicable AGENTS.md instructions. Do not add tests, checksums, implicit fallbacks, background services, or unrelated features. Do not run image cleanup, bulk link repair, or restructuring against the user's real vault without authorization for that data operation. Keep user notes, source images, unrelated settings, and changes by other contributors intact.
 
-**Current version**: v1.3.1 (released). Includes wiki converter feature and modular architecture.
-
-**Superpowers**: Before every task, check and invoke applicable skills (writing-plans, brainstorming, executing-plans, systematic-debugging). Process skills first, implementation skills second. See memory `superpowers-usage.md`.
-
-## Build Commands
+## Build commands
 
 ```bash
-npm install          # Install dependencies
-npm run build        # Production build (outputs main.js)
-npm run dev          # Watch mode for development
-```
-
-Type checking (no build output):
-```bash
+npm install
 npx tsc --noEmit
+npm run build
+npm run dev
 ```
 
-**No test framework or linter is configured.** Verify changes by building and manually testing in Obsidian.
+`npm run dev` starts the development watcher; stop task-created watchers when finished. No test framework or linter is configured. Use type checking, production builds, source review, and direct application operation. Report unverified runtime cases explicitly.
 
 ## Architecture
 
-```
-main.ts                      Entry point: lifecycle + CM6 extension + ribbon icons + commands
-src/
-  constants.ts               MIME types, extension mappings
-  settings.ts                TyporianSettings interface + defaults (12 fields)
-  locale.ts                  i18n: zh/en locale dictionary, t() function (~80 keys)
-  path-utils.ts              Asset folder path calculation (respects custom template)
-  image-handler.ts           Core pipeline: read -> save -> dispatch CM6 transaction
-  cm6-paste-plugin.ts        CM6 ViewPlugin: capture-phase paste/drop interception
-  setting-tab.ts             Settings UI (i18n) + flat layout + icon dropdowns with preview
-  orphan-types.ts            OrphanImageInfo interface, IMAGE_EXTENSIONS set
-  orphan-detector.ts         OrphanDetector: resolvedLinks-based orphan scan
-  orphan-modal.ts            OrphanImageModal: checklist, thumbnails, wiki toggle, safe trash
-  broken-link-repairer.ts    BrokenLinkRepairer: regex + code block filter + wiki conversion
-  code-block-filter.ts       Extract code block/inline code ranges, binary search
-  icon-utils.ts              Lucide icon resolution via setIcon(), ICON_PRESETS
-  share-manager.ts           One-click share: folder/ZIP export with JSZip
-  share-modal.ts             Share modal UI: format toggle, export path
-  restructure-manager.ts     Vault restructuring: sandbox _Restructured_Vault/, preview + apply
-  restructure-modal.ts       Restructure modal UI: file tree preview, confirm-to-apply
-  wiki-converter-modal.ts    WikiConverterModal: scan/preview/convert wiki image links
-styles.css                   All plugin CSS: settings, orphan modal, share, restructure
-```
-
-### Feature Modules
-
-The plugin is organized into 5 feature modules. Each module is self-contained and can be extracted into a standalone plugin if needed.
-
-| Module | Files | Ribbon | Command | Settings |
-|--------|-------|--------|---------|----------|
-| **Passive Intercept** | image-handler.ts, cm6-paste-plugin.ts, path-utils.ts, constants.ts | ❌ | ❌ | namingStrategy, autoRename, interceptImagePath, assetFolderPath |
-| **Orphan Cleanup** | orphan-modal.ts, orphan-detector.ts, orphan-types.ts, broken-link-repairer.ts, code-block-filter.ts | ✅ trash-2 | ✅ orphan-image-cleanup | enableWikiLinkConversion, scanCodeBlocks, manualAttachmentFolder |
-| **Wiki Converter** | wiki-converter-modal.ts, orphan-types.ts (shared) | ✅ repeat-2 | ✅ wiki-link-converter | showWikiConverter, iconWikiConverter |
-| **Share** | share-manager.ts, share-modal.ts | ✅ share-2 | ✅ share-note | openFolderAfterExport |
-| **Restructure** | restructure-manager.ts, restructure-modal.ts | ✅ git-fork | ✅ restructure-vault | showRestructureTool, iconRestructure |
-
-**To split a module into a standalone plugin:**
-1. Copy the module's files into a new plugin project
-2. Copy shared dependencies (locale.ts, icon-utils.ts, orphan-types.ts if needed)
-3. Move the relevant settings fields into the new plugin's settings interface
-4. Move the ribbon icon + command registration from main.ts
-5. Move the relevant settings section from setting-tab.ts
-6. Move relevant CSS from styles.css
-
-### TypeScript
-
-`strictNullChecks` is enabled. Full `strict` mode is not — `noImplicitAny` is on but `strictFunctionTypes` / `strictPropertyInitialization` are off. When adding new code, use explicit types where TS cannot infer (avoid relying on `any`).
-
-### Data Flow
-
-```
-paste/drop event (capture phase)
-  -> cm6-paste-plugin.ts filters for images
-  -> image-handler.handleImage()
-     -> file.arrayBuffer()
-     -> PathUtils.getAssetFolderPath(noteFile)
-     -> vault.createBinary(path, data)
-     -> view.dispatch({ changes, selection })  // atomic CM6 transaction
+```text
+main.ts                     Lifecycle, editor extension, commands, ribbon, setting callbacks
+settings.ts                 Project-root settings interface, defaults, filename policy
+src/constants.ts            MIME types and image extension mappings
+src/locale.ts               Chinese/English dictionaries and interpolation
+src/path-utils.ts           Filename compatibility, encoding/decoding, relative paths
+src/markdown-images.ts      Markdown/Wiki parsing, link generation, explicit/unique resolution
+src/code-block-filter.ts    Code-fence and inline-code ranges
+src/image-handler.ts        Ordered batch image saves and naming
+src/cm6-paste-plugin.ts     Event capture, receiving editor/note, pending insertion positions
+src/setting-tab.ts          Persisted settings UI
+src/orphan-types.ts         Image types and scan results
+src/orphan-detector.ts      Vault reference collection and .assets candidates
+src/orphan-modal.ts         Current/all scope, repair, explicit selection and trash
+src/broken-link-repairer.ts Exact-path and unique-name link repair
+src/wiki-converter-modal.ts Occurrence-based preview and conversion
+src/share-manager.ts        Shared attachment mapping, unique folder/ZIP output
+src/share-modal.ts          Vault-relative export UI and actual output notices
+src/restructure-manager.ts Per-note image copies, in-place links, unique copy directories
+src/restructure-modal.ts   Selection, destination preview, in-place confirmation
+src/icon-utils.ts           Lucide icon utilities
+styles.css                  Plugin settings, dialogs, and .assets explorer hiding
 ```
 
-### Key Design Decisions
+Defaults and important policy parameters belong in root `settings.ts`; user choices persist through Obsidian `loadData()` / `saveData()`. Do not restore `src/settings.ts` or add environment-variable parameter injection.
 
-- **Capture phase**: DOM listeners use `capture: true` on `view.dom` to intercept before Obsidian's default handlers. Non-image events pass through untouched.
-- **Atomic dispatch**: `changes` and `selection` are set in a single `view.dispatch()` call. Never split into two dispatches — this causes cursor flicker.
-- **Empty update()**: The ViewPlugin's `update()` method is intentionally empty. This means zero overhead on regular typing and backspace.
-- **No monkey-patching**: All interception is done via standard DOM events and Obsidian's public API (`registerEditorExtension`).
+## Image insertion
 
-### v1.3.x Features
+The CM6 ViewPlugin captures paste/drop events with public editor APIs and DOM listeners. Capture the receiving note through `editorInfoField`, together with settings, files, and insertion range. Do not read the global active note later during asynchronous saves.
 
-- **Intercept toggle**: `interceptImagePath` setting gates paste/drop interception. When OFF, events pass through to Obsidian.
-- **Code block filter**: `extractCodeBlockRanges()` + `isInsideCodeBlock()` binary search. Repair skips links inside fenced/inline code unless `scanCodeBlocks` is on.
-- **Wiki link conversion**: `WIKI_EMBED_REGEX` matches `![[img]]` / `![[img|alt]]`. Resolution: `getFirstLinkpathDest` → manual folder → Obsidian attachment config.
-- **Wiki toggle in modal**: Inline toggle in orphan modal footer, session-only override (reads default from settings, does not persist).
-- **Wiki link converter**: Independent modal (`WikiConverterModal`) with ribbon icon + command. Scans current/all notes for `![[path]]` wiki embeds, shows list with thumbnails, selective conversion to standard markdown `![alt](path)`. Replaces the wiki toggle that was previously embedded in the orphan modal.
-- **One-click share**: `ShareManager` exports note + images as folder or ZIP (JSZip bundled). Native folder picker via `electron.remote.dialog`. "Open folder after export" toggle.
-- **Vault restructure**: `RestructureManager` creates `_Restructured_Vault/` sandbox. Table-based preview with checkboxes, smart filtering (no-image notes flagged).
-- **Icon customization**: 3 configurable Lucide icons (audit/share/restructure). `setIcon()` on ribbon element for live refresh. Inline preview in settings dropdown.
-- **Flat settings**: Settings organized into 5 feature sections (passive, orphan, wiki, share, restructure) with section headers. Icon settings at bottom with inline preview.
-- **Ribbon icons**: Always create all 3 icons, use `display: none` to hide restructure when disabled. Toggle in settings shows/hides instantly.
+Save a batch in input order, then dispatch one transaction containing changes and selection. Pasting replaces the captured selection; dropping inserts at the resolved position. Pending operations map their positions through document changes and become inactive when their editor switches notes or closes. Saved images remain associated with the original note; report that state instead of inserting into another note.
 
-### Obsidian API
+Preserve filenames subject to the root compatibility policy, or use timestamp names. Enabled conflict renaming selects a unique filename; disabled conflict renaming skips the conflicting image with a notice. Never overwrite an existing image because automatic renaming is disabled. Mixed image/non-image drops remain with Obsidian.
 
-- `app.vault.createBinary(path, data)` — save binary files
-- `app.vault.adapter.exists(path)` / `app.vault.adapter.mkdir(path)` — filesystem checks
-- `this.registerEditorExtension(ext)` — register CM6 extensions (auto-cleaned on unload)
-- `this.loadData()` / `this.saveData()` — persist settings
-- `setIcon(element, iconName)` — set Lucide icon on DOM element
-- `app.metadataCache.getFirstLinkpathDest(link, source)` — resolve wiki link to TFile
-- `(app.vault as any).getConfig('attachmentFolderPath')` — read Obsidian's attachment folder setting
-- `require('electron').remote.dialog.showOpenDialog()` — native folder picker (share modal)
-- `require('electron').shell.openPath(path)` — open folder in OS file explorer
+Use `createMarkdownImage()` for generated links and the shared path helpers throughout insertion, repair, conversion, export, and restructuring. Preserve titles and escaped captions. Do not reintroduce a `[^)]+` image regex or `%20`-only encoding.
 
-### CM6 API
+## Resolution and conversion
 
-- `ViewPlugin.fromClass(ViewClass)` — create ViewPlugin
-- `view.dispatch({ changes, selection, userEvent })` — atomic document mutation
-- `view.state.selection.main.head` — cursor position
-- `view.posAtCoords({ x, y })` — screen coords to document offset
+Resolve exact paths first. A missing path may use a basename match only when exactly one image matches. Explicit Wiki paths remain path-based; the optional manual attachment directory participates in resolution. Ambiguous same-name candidates remain unresolved rather than selecting the first cache or vault match.
 
-### Image Audit Flow
+Code examples are excluded by default. Repair/conversion honors the explicit scan-code-block setting; export/restructure skips code examples. Wiki conversion tracks each occurrence by source position. A changed note invalidates its old preview; rescan before applying.
 
-```
-User triggers "Image Audit" (ribbon icon or command palette)
-  -> new OrphanImageModal(app).open()
-  -> OrphanDetector.scan()
-     -> vault.getFiles() -> filter .assets images
-     -> metadataCache.resolvedLinks -> build referenced set
-     -> difference -> OrphanImageInfo[]
-  -> Modal renders checklist with thumbnails
-  -> User selects images, clicks "Safe Cleanup"
-  -> vault.trash(file, false)  // Obsidian internal trash, not permanent delete
-```
+## Image audit
 
-Key API: `app.metadataCache.resolvedLinks` is `Record<string, Record<string, number>>` — outer key is source note path, inner key is target file path, value is link count. Scan only runs on user trigger (zero background overhead).
+Reference collection combines the resolved-link index with current Markdown/Wiki note contents. Scans are user-triggered, without a background loop. Candidate files are supported images under directories whose names end in `.assets`, including nested directories. Current-note scope uses the configured attachment directory boundary; references from other notes still count.
 
-### Broken Image Repair Flow (integrated into Orphan Modal)
+Cleanup uses explicit selected images and rechecks current reference status before calling `vault.trash(file, false)`. Obsidian's internal trash is a filesystem location, not a plugin restoration UI. Audit does not clean source images outside `.assets` directories.
 
-```
-User opens Orphan Modal -> clicks "Repair broken links" button
-  -> BrokenLinkRepairer.repair(view)
-     -> regex scan all ![](path) in current note
-     -> for each: cleanPath (backslash, absolute prefix)
-     -> check if cleaned path resolves to existing file
-     -> if not: extract filename, search vault-wide via vault.getFiles()
-     -> compute relative path, apply via view.dispatch()
-  -> modal automatically rescans -> orphan list refreshes
-```
+## Share and restructure
 
-Key details:
-- Repair is integrated into OrphanImageModal, not a standalone command
-- Only standard markdown image syntax `![alt](path)` is targeted
-- After repair, the orphan list refreshes automatically
-- Vault-wide filename search prefers `.assets/` directories, then same-directory matches
+Share destinations are vault-relative parent directories; empty means the vault root. Reject absolute system paths and `..` segments. The removed native folder picker must not be restored unless actual external filesystem export is implemented separately. Folder export creates a unique note-named directory; ZIP export creates a unique file. Notify and open the actual returned destination. Persist the open-folder setting.
 
-### Electron Usage
+Each distinct source image gets its own destination name, while repeated references to the same source share one copy. Different same-name sources must not overwrite or collapse. Export supports Markdown and Wiki images and does not mutate originals.
 
-`orphan-modal.ts` uses `require('electron').shell.showItemInFolder()` to reveal files in the OS file explorer. This is a runtime require (not an import) since `electron` is external to the esbuild bundle. Falls back to `app.openWithDefaultApp()` if electron is unavailable.
+Restructure mapping is per note. Copy mode creates a unique directory based on `restructureOutputFolder`, preserves note paths, and excludes prior output directories from future scans. In-place mode changes only selected notes, copies images with unique collision names, and reuses already correctly placed images. Unresolved references remain unchanged.
 
-### i18n
+**Source images are retained in all restructure modes.** Other notes and ordinary/HTML links may still reference them. Later cleanup is a separate explicit audit action. Do not require unrelated orphan cleanup before in-place restructuring and do not introduce automatic source-image deletion.
 
-Locale is detected from `window.localStorage.getItem('language')` or `navigator.language`. Chinese (`zh*`) maps to zh locale; everything else falls back to English. The `t(key, vars?)` function returns localized text with optional `{placeholder}` interpolation.
+## Explorer hiding and desktop APIs
 
-## Release Workflow
+The `.assets` visibility setting uses scoped CSS and plugin state; files and references remain on disk. CSS `:has()` support depends on the Obsidian installer. Verify ordinary explorer windows, pop-out windows, reload persistence, toggling, and new/renamed directories separately.
 
-Pushing a `v*` tag triggers `.github/workflows/release.yml`, which builds and publishes `main.js`, `manifest.json`, and `styles.css` as GitHub Release assets.
+Electron APIs are runtime imports used for desktop reveal/open actions. Vault-relative writes use the vault API. Do not interpret a successful shell call as proof of export contents or an installation as proof of runtime behavior.
 
-```bash
-git checkout main
-git merge feat/branch --no-ff -m "Merge: description"
-git tag vX.Y.Z
-git push origin main --tags
-gh release create vX.Y.Z --generate-notes main.js manifest.json styles.css
-```
+## TypeScript and releases
 
-Sole developer — no PR workflow needed. Merge directly to main, tag, push, create release.
+`strictNullChecks` and `noImplicitAny` are enabled. Use explicit types where needed. The Obsidian SDK and build tool versions are pinned in `package.json`; obsolete `standard-version` tooling has been removed.
+
+Pushing a `v*` tag triggers `.github/workflows/release.yml` to build Release assets. Keep package, manifest, and version compatibility metadata consistent. Do not publish a release or merge a PR merely because the source version was updated; follow the active task's authorization and report the actual publication state.

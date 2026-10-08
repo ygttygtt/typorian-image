@@ -1,8 +1,9 @@
-import { App, PluginSettingTab, Setting } from 'obsidian';
+import { App, Notice, PluginSettingTab, Setting } from 'obsidian';
+import { PathUtils } from './path-utils';
 import type TyporianImagePlugin from '../main';
 import { t } from './locale';
 import { ICON_PRESETS, getIconSvg } from './icon-utils';
-import type { TyporianSettings } from './settings';
+import type { TyporianSettings } from '../settings';
 
 export class TyporianSettingTab extends PluginSettingTab {
   plugin: TyporianImagePlugin;
@@ -70,6 +71,19 @@ export class TyporianSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.assetFolderPath)
           .onChange(async (value) => {
             this.plugin.settings.assetFolderPath = value || './${notename}.assets/';
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName(t('settings.hideAssetFolders.name'))
+      .setDesc(t('settings.hideAssetFolders.desc'))
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.hideAssetFolders)
+          .onChange(async (value) => {
+            this.plugin.settings.hideAssetFolders = value;
+            this.plugin.refreshAssetFolderVisibility();
             await this.plugin.saveSettings();
           })
       );
@@ -157,6 +171,23 @@ export class TyporianSettingTab extends PluginSettingTab {
             this.plugin.refreshRibbonIcons();
           })
       );
+
+    new Setting(containerEl)
+      .setName(t('settings.restructureOutput.name'))
+      .setDesc(t('settings.restructureOutput.desc'))
+      .addText((text) => {
+        text.setValue(this.plugin.settings.restructureOutputFolder);
+        text.inputEl.addEventListener('blur', async () => {
+          const value = text.getValue().trim().replace(/\\/g, '/');
+          if (!value || value.startsWith('/') || /^[a-z]:/i.test(value) ||
+              value.split('/').includes('..') || value.split('/').every(part => part === '.' || part === '')) {
+            new Notice(t('settings.restructureOutput.invalid'));
+            return;
+          }
+          this.plugin.settings.restructureOutputFolder = PathUtils.resolveRelativePath('', value);
+          await this.plugin.saveSettings();
+        });
+      });
 
     // ========== Section: 图标设置 ==========
     containerEl.createEl('h3', { text: t('settings.icons') });

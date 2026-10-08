@@ -3,7 +3,7 @@ import { ViewPlugin } from '@codemirror/view';
 import { ImageHandler } from './src/image-handler';
 import { createImagePastePlugin } from './src/cm6-paste-plugin';
 import { TyporianSettingTab } from './src/setting-tab';
-import { TyporianSettings, DEFAULT_SETTINGS } from './src/settings';
+import { TyporianSettings, DEFAULT_SETTINGS } from './settings';
 import { OrphanImageModal } from './src/orphan-modal';
 import { ShareModal } from './src/share-modal';
 import { RestructureModal } from './src/restructure-modal';
@@ -29,11 +29,16 @@ export default class TyporianImagePlugin extends Plugin {
 
     this.addSettingTab(new TyporianSettingTab(this.app, this));
 
+    this.refreshAssetFolderVisibility();
+    this.registerEvent(this.app.workspace.on('window-open', (_workspaceWindow, window) => {
+      window.document.body.classList.toggle('typorian-hide-assets', this.settings.hideAssetFolders);
+    }));
+
     // Ribbon icons — add in order: Audit, Share, Restructure
     this.ribbonAuditEl = this.addRibbonIcon(
       this.settings.iconImageAudit || 'trash-2',
       t('orphan.title'),
-      () => { new OrphanImageModal(this.app, this.settings).open(); }
+      () => { new OrphanImageModal(this.app, this.settings, () => this.saveSettings()).open(); }
     );
 
     this.ribbonWikiEl = this.addRibbonIcon(
@@ -49,7 +54,7 @@ export default class TyporianImagePlugin extends Plugin {
     this.ribbonShareEl = this.addRibbonIcon(
       this.settings.iconShare || 'share-2',
       t('share.title'),
-      () => { new ShareModal(this.app, this.settings).open(); }
+      () => { new ShareModal(this.app, this.settings, () => this.saveSettings()).open(); }
     );
 
     this.ribbonRestructureEl = this.addRibbonIcon(
@@ -67,7 +72,7 @@ export default class TyporianImagePlugin extends Plugin {
     this.addCommand({
       id: 'orphan-image-cleanup',
       name: t('orphan.title'),
-      callback: () => { new OrphanImageModal(this.app, this.settings).open(); },
+      callback: () => { new OrphanImageModal(this.app, this.settings, () => this.saveSettings()).open(); },
     });
 
     this.addCommand({
@@ -87,7 +92,7 @@ export default class TyporianImagePlugin extends Plugin {
     this.addCommand({
       id: 'share-note',
       name: t('share.title'),
-      callback: () => { new ShareModal(this.app, this.settings).open(); },
+      callback: () => { new ShareModal(this.app, this.settings, () => this.saveSettings()).open(); },
     });
 
     this.addCommand({
@@ -106,6 +111,9 @@ export default class TyporianImagePlugin extends Plugin {
   }
 
   async onunload(): Promise<void> {
+    for (const doc of this.getWorkspaceDocuments()) {
+      doc.body.classList.remove('typorian-hide-assets');
+    }
     // CM6 extension lifecycle is managed by Obsidian via registerEditorExtension.
     // ViewPlugin.destroy() removes DOM event listeners automatically.
   }
@@ -117,6 +125,20 @@ export default class TyporianImagePlugin extends Plugin {
   async saveSettings(): Promise<void> {
     await this.saveData(this.settings);
     this.imageHandler.updateSettings(this.settings);
+  }
+
+  refreshAssetFolderVisibility(): void {
+    for (const doc of this.getWorkspaceDocuments()) {
+      doc.body.classList.toggle('typorian-hide-assets', this.settings.hideAssetFolders);
+    }
+  }
+
+  private getWorkspaceDocuments(): Set<Document> {
+    const documents = new Set<Document>([document]);
+    this.app.workspace.iterateAllLeaves((leaf) => {
+      documents.add(leaf.view.containerEl.ownerDocument);
+    });
+    return documents;
   }
 
   refreshRibbonIcons(): void {

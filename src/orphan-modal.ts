@@ -2,9 +2,10 @@ import { App, Modal, Notice, TFile, MarkdownView } from 'obsidian';
 import { OrphanDetector } from './orphan-detector';
 import { OrphanImageInfo } from './orphan-types';
 import { BrokenLinkRepairer } from './broken-link-repairer';
-import { TyporianSettings } from './settings';
+import { TyporianSettings } from '../settings';
 import { getIconSvg } from './icon-utils';
 import { t } from './locale';
+import { PathUtils } from './path-utils';
 
 export class OrphanImageModal extends Modal {
   private detector: OrphanDetector;
@@ -18,7 +19,7 @@ export class OrphanImageModal extends Modal {
   private headerContainer: HTMLDivElement | null = null;
   private scanMode: 'current' | 'all' = 'current';
 
-  constructor(app: App, private settings?: TyporianSettings) {
+  constructor(app: App, private settings: TyporianSettings, private saveSettings: () => Promise<void>) {
     super(app);
     this.detector = new OrphanDetector(app);
     this.repairer = new BrokenLinkRepairer(app, settings);
@@ -49,8 +50,8 @@ export class OrphanImageModal extends Modal {
       const view = this.app.workspace.getActiveViewOfType(MarkdownView);
       const currentFile = view?.file;
       if (currentFile) {
-        const folderPrefix = currentFile.path.replace(/\.md$/, '');
-        this.orphans = allOrphans.filter(o => o.file.path.startsWith(folderPrefix));
+        const folder = PathUtils.getAssetFolderPath(currentFile, this.settings.assetFolderPath);
+        this.orphans = allOrphans.filter(o => o.file.path.startsWith(`${folder}/`));
       } else {
         this.orphans = [];
       }
@@ -217,9 +218,10 @@ export class OrphanImageModal extends Modal {
       const track = wikiToggleEl.createDiv({ cls: 'orphan-wiki-toggle-track' });
       track.createDiv({ cls: 'orphan-wiki-toggle-thumb' });
       if (this.settings.enableWikiLinkConversion) track.classList.add('is-on');
-      wikiToggleEl.addEventListener('click', () => {
+      wikiToggleEl.addEventListener('click', async () => {
         this.settings!.enableWikiLinkConversion = !this.settings!.enableWikiLinkConversion;
         track.classList.toggle('is-on');
+        await this.saveSettings();
       });
     }
 
@@ -291,41 +293,12 @@ export class OrphanImageModal extends Modal {
     }
   }
 
-  /**
-   * Fuzzy-match an orphan image file to its parent markdown note.
-   * Strategy: extract note name from .assets folder prefix, then exact match, then fuzzy.
-   */
   private findRelatedNote(orphanFile: TFile): TFile | null {
-    const path = orphanFile.path;
-    const assetsMatch = path.match(/(.+?)\.assets\//);
-    if (!assetsMatch) return null;
-
-    const folderPrefix = assetsMatch[1];
-    const candidateName = folderPrefix.split('/').pop();
-    if (!candidateName) return null;
-
-    const allMdFiles = this.app.vault.getMarkdownFiles();
-
-    // Exact match
-    const exact = allMdFiles.find((f) => f.basename === candidateName);
-    if (exact) return exact;
-
-    // Fuzzy match: bidirectional containment, pick smallest length diff
-    let bestMatch: TFile | null = null;
-    let bestDiff = Infinity;
-
-    for (const mdFile of allMdFiles) {
-      const noteName = mdFile.basename;
-      if (noteName.includes(candidateName) || candidateName.includes(noteName)) {
-        const diff = Math.abs(noteName.length - candidateName.length);
-        if (diff < bestDiff) {
-          bestDiff = diff;
-          bestMatch = mdFile;
-        }
-      }
-    }
-
-    return bestMatch;
+    const candidates = this.app.vault.getMarkdownFiles().filter(note => {
+      const folder = PathUtils.getAssetFolderPath(note, this.settings.assetFolderPath);
+      return orphanFile.path.startsWith(`${folder}/`);
+    });
+    return candidates.length === 1 ? candidates[0] : null;
   }
 
   /**
@@ -377,29 +350,21 @@ export class OrphanImageModal extends Modal {
     });
     if (selectedPaths.length === 0) return;
 
-    const adapter = this.app.vault.adapter as any;
-    const basePath: string = adapter.basePath ?? '';
-    const sep = basePath.includes('\\') ? '\\' : '/';
-
+    // Refresh reference facts before applying the selected cleanup action.
+    const currentOrphans = new Set((await this.detector.scan()).map(orphan => orphan.file.path));
     let trashed = 0;
+    let changed = false;
     for (const path of selectedPaths) {
+      if (!currentOrphans.has(path)) { changed = true; continue; }
       const file = this.app.vault.getAbstractFileByPath(path);
       if (!(file instanceof TFile)) continue;
-
-      const fullPath = basePath + sep + file.path.replace(/\//g, sep);
-      try {
-        const { shell } = require('electron');
-        await shell.trashItem(fullPath);
-        trashed++;
-      } catch {
-        // Fallback: use Obsidian internal trash
-        await this.app.vault.trash(file, false);
-        trashed++;
-      }
+      await this.app.vault.trash(file, false);
+      trashed++;
     }
+    if (changed) new Notice(t('common.contentChanged'));
 
     new Notice(t('orphan.trashNotice', { count: trashed }));
-    this.close();
+    await this.scanAndRender();
   }
 
   private formatTotalSize(bytes: number): string {

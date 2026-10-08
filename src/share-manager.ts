@@ -1,126 +1,143 @@
 import { App, TFile, normalizePath } from 'obsidian';
 import JSZip from 'jszip';
-import { TyporianSettings } from './settings';
+import { TyporianSettings } from '../settings';
+import { PathUtils } from './path-utils';
+import { createMarkdownImage, isRemoteImagePath, parseMarkdownImages, parseWikiImages, resolveWikiImage, resolveMarkdownImage } from './markdown-images';
+import { extractCodeBlockRanges, isInsideCodeBlock } from './code-block-filter';
+import { IMAGE_EXTENSIONS } from './orphan-types';
+import { t } from './locale';
 
-const MD_IMAGE_REGEX = /!\[([^\]]*)\]\(([^)]+)\)/g;
+export interface ImageReference {
+  index: number;
+  raw: string;
+  alt: string;
+  title: string;
+  sourceFile: TFile;
+}
+
+/** Resolve actual attachments once, preserving unresolved links and code examples. */
+export function collectImageReferences(app: App, note: TFile, content: string, manualFolder = ''): ImageReference[] {
+  const refs: ImageReference[] = [];
+  const codeRanges = extractCodeBlockRanges(content);
+  for (const image of parseMarkdownImages(content)) {
+    if (isInsideCodeBlock(image.index, codeRanges) || isRemoteImagePath(image.path)) continue;
+    const file = resolveMarkdownImage(app, note.path, PathUtils.decodePath(image.path));
+    if (file instanceof TFile && IMAGE_EXTENSIONS.has(file.extension.toLowerCase())) {
+      refs.push({ ...image, sourceFile: file });
+    }
+  }
+  for (const image of parseWikiImages(content)) {
+    const { file } = resolveWikiImage(app, note.path, image.path, manualFolder);
+    if (file instanceof TFile && IMAGE_EXTENSIONS.has(file.extension.toLowerCase())) {
+      refs.push({ ...image, title: '', sourceFile: file });
+    }
+  }
+  return refs;
+}
+
+/** Assign distinct names even when source attachments have identical basenames. */
+export function assignImageNames(refs: ImageReference[]): Map<string, string> {
+  const names = new Map<string, string>();
+  const used = new Set<string>();
+  for (const { sourceFile } of refs) {
+    if (names.has(sourceFile.path)) continue;
+    const basename = PathUtils.compatibleImageName(sourceFile.basename);
+    let name = `${basename}.${sourceFile.extension}`;
+    let counter = 1;
+    while (used.has(name.toLowerCase())) {
+      name = `${basename}(${counter++}).${sourceFile.extension}`;
+    }
+    names.set(sourceFile.path, name);
+    used.add(name.toLowerCase());
+  }
+  return names;
+}
+
+export function rewriteImageReferences(content: string, refs: ImageReference[], paths: Map<string, string>): string {
+  for (const ref of refs.slice().sort((a, b) => b.index - a.index)) {
+    const insert = createMarkdownImage(ref.alt, paths.get(ref.sourceFile.path)!, ref.title);
+    content = content.substring(0, ref.index) + insert + content.substring(ref.index + ref.raw.length);
+  }
+  return content;
+}
 
 export class ShareManager {
-  constructor(
-    private app: App,
-    private settings: TyporianSettings
-  ) {}
+  constructor(private app: App, private settings: TyporianSettings) {}
 
-  /**
-   * Export note and all referenced images as a folder.
-   */
-  async exportAsFolder(note: TFile, exportPath: string): Promise<void> {
-    const content = await this.app.vault.read(note);
-    const noteDir = note.parent?.path ?? '';
-    const assetsFolder = `${exportPath}/${note.basename}.assets`;
-
-    await this.ensureDir(exportPath);
-    await this.ensureDir(assetsFolder);
-
-    const { newContent, copiedImages } = await this.processContent(content, noteDir, note.basename);
-
-    // Copy images to export assets folder
+  async exportAsFolder(note: TFile, exportPath: string): Promise<string> {
+    const parent = this.resolveExportDirectory(exportPath);
+    await this.ensureDir(parent);
+    const output = await this.uniqueDirectory(parent, note.basename);
+    await this.ensureDir(output);
+    const assetsFolder = `${output}/${note.basename}.assets`;
+    const { newContent, copiedImages } = await this.processContent(note);
+    if (copiedImages.length > 0) await this.ensureDir(assetsFolder);
     for (const img of copiedImages) {
       const data = await this.app.vault.readBinary(img.sourceFile);
-      const targetPath = `${assetsFolder}/${img.sourceFile.name}`;
-      await this.app.vault.createBinary(normalizePath(targetPath), data);
+      await this.app.vault.createBinary(normalizePath(`${output}/${img.newPath}`), data);
     }
-
-    // Write modified markdown
-    const mdPath = `${exportPath}/${note.basename}.md`;
-    await this.app.vault.create(normalizePath(mdPath), newContent);
+    await this.app.vault.create(normalizePath(`${output}/${note.name}`), newContent);
+    return output;
   }
 
-  /**
-   * Export note and all referenced images as a ZIP archive.
-   */
-  async exportAsZip(note: TFile, exportPath: string): Promise<void> {
-    const content = await this.app.vault.read(note);
-    const noteDir = note.parent?.path ?? '';
-    const assetsFolder = `${note.basename}.assets`;
-
+  async exportAsZip(note: TFile, exportPath: string): Promise<string> {
+    const parent = this.resolveExportDirectory(exportPath);
+    await this.ensureDir(parent);
+    const { newContent, copiedImages } = await this.processContent(note);
     const zip = new JSZip();
-    const { newContent, copiedImages } = await this.processContent(content, noteDir, note.basename);
-
-    // Add markdown file
-    zip.file(`${note.basename}.md`, newContent);
-
-    // Add image files
+    zip.file(note.name, newContent);
     for (const img of copiedImages) {
-      const data = await this.app.vault.readBinary(img.sourceFile);
-      zip.file(`${assetsFolder}/${img.sourceFile.name}`, data);
+      zip.file(img.newPath, await this.app.vault.readBinary(img.sourceFile));
     }
-
-    // Generate and save zip
-    const zipData = await zip.generateAsync({ type: 'arraybuffer' });
-    const zipPath = `${exportPath}/${note.basename}.zip`;
-    await this.app.vault.createBinary(normalizePath(zipPath), zipData);
+    const zipName = await PathUtils.getUniqueFileName(this.app.vault, parent, note.basename, 'zip');
+    const output = normalizePath(parent ? `${parent}/${zipName}` : zipName);
+    await this.app.vault.createBinary(output, await zip.generateAsync({ type: 'arraybuffer' }));
+    return output;
   }
 
-  private async processContent(
-    content: string,
-    noteDir: string,
-    noteBasename: string
-  ): Promise<{ newContent: string; copiedImages: Array<{ sourceFile: TFile; newPath: string }> }> {
-    const replacements: Array<{ from: number; to: number; insert: string }> = [];
+  private async processContent(note: TFile): Promise<{
+    newContent: string;
+    copiedImages: Array<{ sourceFile: TFile; newPath: string }>;
+  }> {
+    const content = await this.app.vault.read(note);
+    const refs = collectImageReferences(this.app, note, content, this.settings.manualAttachmentFolder);
+    const names = assignImageNames(refs);
+    const paths = new Map<string, string>();
     const copiedImages: Array<{ sourceFile: TFile; newPath: string }> = [];
-    const processedPaths = new Set<string>();
-    let match: RegExpExecArray | null;
-
-    MD_IMAGE_REGEX.lastIndex = 0;
-    while ((match = MD_IMAGE_REGEX.exec(content)) !== null) {
-      const rawPath = match[2];
-      if (rawPath.startsWith('http://') || rawPath.startsWith('https://')) continue;
-
-      const resolvedPath = this.resolveImagePath(noteDir, rawPath);
-      if (!resolvedPath) continue;
-
-      const sourceFile = this.app.vault.getAbstractFileByPath(normalizePath(resolvedPath));
-      if (!(sourceFile instanceof TFile)) continue;
-
-      const newRelPath = `${noteBasename}.assets/${sourceFile.name}`;
-
-      if (!processedPaths.has(sourceFile.path)) {
-        processedPaths.add(sourceFile.path);
-        copiedImages.push({ sourceFile, newPath: newRelPath });
-      }
-
-      const alt = match[1];
-      replacements.push({
-        from: match.index,
-        to: match.index + match[0].length,
-        insert: `![${alt}](${newRelPath})`,
-      });
+    for (const { sourceFile } of refs) {
+      if (paths.has(sourceFile.path)) continue;
+      const newPath = `${note.basename}.assets/${names.get(sourceFile.path)!}`;
+      paths.set(sourceFile.path, newPath);
+      copiedImages.push({ sourceFile, newPath });
     }
-
-    // Apply replacements in reverse order
-    let newContent = content;
-    replacements.sort((a, b) => b.from - a.from);
-    for (const r of replacements) {
-      newContent = newContent.substring(0, r.from) + r.insert + newContent.substring(r.to);
-    }
-
-    return { newContent, copiedImages };
+    return { newContent: rewriteImageReferences(content, refs, paths), copiedImages };
   }
 
-  private resolveImagePath(noteDir: string, rawPath: string): string | null {
-    let path = rawPath.replace(/\\/g, '/');
-    path = path.replace(/^[A-Za-z]:\//, '');
-    path = path.replace(/^\/+/, '');
-    path = path.replace(/%20/g, ' ');
-    if (path.startsWith('./')) path = path.substring(2);
-    return noteDir ? `${noteDir}/${path}` : path;
+  private resolveExportDirectory(path: string): string {
+    const cleaned = path.trim().replace(/\\/g, '/');
+    if (cleaned.startsWith('/') || /^[A-Za-z]:/.test(cleaned) || cleaned.split('/').includes('..')) {
+      throw new Error(t('share.invalidPath'));
+    }
+    return cleaned ? normalizePath(cleaned) : '';
+  }
+
+  private async uniqueDirectory(parent: string, basename: string): Promise<string> {
+    let name = basename;
+    let counter = 1;
+    let path = normalizePath(parent ? `${parent}/${name}` : name);
+    while (await this.app.vault.adapter.exists(path)) {
+      name = `${basename}(${counter++})`;
+      path = normalizePath(parent ? `${parent}/${name}` : name);
+    }
+    return path;
   }
 
   private async ensureDir(path: string): Promise<void> {
-    const normalized = normalizePath(path);
-    const exists = await this.app.vault.adapter.exists(normalized);
-    if (!exists) {
-      await this.app.vault.adapter.mkdir(normalized);
+    const segments = path.split('/').filter(Boolean);
+    let current = '';
+    for (const segment of segments) {
+      current = current ? `${current}/${segment}` : segment;
+      if (!(await this.app.vault.adapter.exists(current))) await this.app.vault.createFolder(current);
     }
   }
 }
