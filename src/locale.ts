@@ -11,6 +11,8 @@ type LocaleKey =
   | 'settings.currentBehavior.desc3'
   | 'settings.assetPath.name'
   | 'settings.assetPath.desc'
+  | 'settings.hideAssetFolders.name'
+  | 'settings.hideAssetFolders.desc'
   | 'settings.typoraGuide'
   | 'settings.typoraGuide.intro'
   | 'settings.typoraGuide.step1'
@@ -114,6 +116,8 @@ type LocaleKey =
   | 'wiki.toggleLabel';
 
 const zh: Record<LocaleKey, string> = {
+  'settings.hideAssetFolders.name': '在文件列表中隐藏 .assets 文件夹',
+  'settings.hideAssetFolders.desc': '隐藏所有名称以 .assets 结尾的图片文件夹。仅影响文件列表显示，图片链接和 Typora 读取保持正常；关闭后立即恢复显示。',
   'settings.namingStrategy.name': '图片命名策略',
   'settings.namingStrategy.desc': '粘贴或拖放图片时的文件名生成方式。',
   'settings.namingStrategy.original': '保留原始文件名',
@@ -236,6 +240,8 @@ const zh: Record<LocaleKey, string> = {
 };
 
 const en: Record<LocaleKey, string> = {
+  'settings.hideAssetFolders.name': 'Hide .assets folders in the file explorer',
+  'settings.hideAssetFolders.desc': 'Hide all folders whose names end in .assets. Only affects the file explorer; image links and Typora access continue to work. Disable to show the folders again.',
   'settings.namingStrategy.name': 'Image naming strategy',
   'settings.namingStrategy.desc': 'How image filenames are generated when pasted or dropped.',
   'settings.namingStrategy.original': 'Keep original filename',

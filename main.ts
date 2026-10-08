@@ -29,6 +29,11 @@ export default class TyporianImagePlugin extends Plugin {
 
     this.addSettingTab(new TyporianSettingTab(this.app, this));
 
+    this.refreshAssetFolderVisibility();
+    this.registerEvent(this.app.workspace.on('window-open', (_workspaceWindow, window) => {
+      window.document.body.classList.toggle('typorian-hide-assets', this.settings.hideAssetFolders);
+    }));
+
     // Ribbon icons — add in order: Audit, Share, Restructure
     this.ribbonAuditEl = this.addRibbonIcon(
       this.settings.iconImageAudit || 'trash-2',
@@ -106,6 +111,9 @@ export default class TyporianImagePlugin extends Plugin {
   }
 
   async onunload(): Promise<void> {
+    for (const doc of this.getWorkspaceDocuments()) {
+      doc.body.classList.remove('typorian-hide-assets');
+    }
     // CM6 extension lifecycle is managed by Obsidian via registerEditorExtension.
     // ViewPlugin.destroy() removes DOM event listeners automatically.
   }
@@ -117,6 +125,20 @@ export default class TyporianImagePlugin extends Plugin {
   async saveSettings(): Promise<void> {
     await this.saveData(this.settings);
     this.imageHandler.updateSettings(this.settings);
+  }
+
+  refreshAssetFolderVisibility(): void {
+    for (const doc of this.getWorkspaceDocuments()) {
+      doc.body.classList.toggle('typorian-hide-assets', this.settings.hideAssetFolders);
+    }
+  }
+
+  private getWorkspaceDocuments(): Set<Document> {
+    const documents = new Set<Document>([document]);
+    this.app.workspace.iterateAllLeaves((leaf) => {
+      documents.add(leaf.view.containerEl.ownerDocument);
+    });
+    return documents;
   }
 
   refreshRibbonIcons(): void {

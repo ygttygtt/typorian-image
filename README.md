@@ -69,6 +69,9 @@ With these settings, both applications store images in the same `.assets` folder
 | Image naming strategy | Keep original filename | Choose between preserving the original filename or using a timestamp |
 | Auto-rename on conflict | Enabled | Appends a sequence number when a file with the same name already exists |
 | Asset folder path (advanced) | `./${notename}.assets/` | Customizable path template for image storage |
+| Hide .assets folders in the file explorer | Disabled | Hide all folders whose names end in `.assets` from the file explorer; disable to show them again |
+
+Hiding affects only Obsidian's file explorer. Image folders, links, search indexing, and Typora access stay intact. Newly created or renamed `.assets` folders match automatically. This feature requires an Obsidian installer with CSS `:has()` support; update older installers first. Pop-out windows use the same setting.
 
 ## Broken Image Repair
 

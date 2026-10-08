@@ -2,6 +2,7 @@ export interface TyporianSettings {
   namingStrategy: 'original' | 'timestamp';
   autoRenameOnConflict: boolean;
   assetFolderPath: string;
+  hideAssetFolders: boolean;
   interceptImagePath: boolean;
   enableWikiLinkConversion: boolean;
   scanCodeBlocks: boolean;
@@ -19,6 +20,7 @@ export const DEFAULT_SETTINGS: TyporianSettings = {
   namingStrategy: 'original',
   autoRenameOnConflict: true,
   assetFolderPath: './${notename}.assets/',
+  hideAssetFolders: false,
   interceptImagePath: true,
   enableWikiLinkConversion: false,
   scanCodeBlocks: false,

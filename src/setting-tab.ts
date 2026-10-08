@@ -74,6 +74,19 @@ export class TyporianSettingTab extends PluginSettingTab {
           })
       );
 
+    new Setting(containerEl)
+      .setName(t('settings.hideAssetFolders.name'))
+      .setDesc(t('settings.hideAssetFolders.desc'))
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.hideAssetFolders)
+          .onChange(async (value) => {
+            this.plugin.settings.hideAssetFolders = value;
+            this.plugin.refreshAssetFolderVisibility();
+            await this.plugin.saveSettings();
+          })
+      );
+
     // ========== Section: 无主图片清理 ==========
     containerEl.createEl('h3', { text: t('settings.section.orphan') });
 
