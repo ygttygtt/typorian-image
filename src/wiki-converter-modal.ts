@@ -1,398 +1,170 @@
 import { App, Modal, Notice, TFile, MarkdownView } from 'obsidian';
 import { TyporianSettings } from '../settings';
-import { getIconSvg } from './icon-utils';
 import { t } from './locale';
-import { IMAGE_EXTENSIONS } from './orphan-types';
+import { IMAGE_EXTENSIONS } from './constants';
 import { PathUtils } from './path-utils';
-import { createMarkdownImage, isRemoteImagePath, parseWikiImages, resolveWikiImage } from './markdown-images';
+import { createMarkdownImage, isRemoteImagePath, isWikiImageSize, parseWikiImages, resolveActualWikiImage } from './markdown-images';
+import { ImageCheckModal } from './image-check-modal';
 
-interface WikiLinkItem {
-  rawLink: string;
+interface ConversionItem {
+  raw: string;
   offset: number;
-  rawPath: string;
   alt: string;
-  notePath: string;
+  note: TFile;
   line: number;
-  resolvedFile: TFile | null;
-  ambiguous: boolean;
+  image: TFile;
+  reason: 'size' | 'name' | null;
 }
 
+/** Format conversion only. Missing-image actions belong to ImageCheckModal. */
 export class WikiConverterModal extends Modal {
-  private settings: TyporianSettings;
-  private scannedContents = new Map<string, string>();
-  private items: WikiLinkItem[] = [];
-  private checkboxes: Map<number, HTMLInputElement> = new Map();
-  private selectAllCheckbox: HTMLInputElement | null = null;
-  private convertButton: HTMLButtonElement | null = null;
-  private listContainer: HTMLDivElement | null = null;
-  private summaryEl: HTMLElement | null = null;
-  private scanMode: 'current' | 'all' = 'current';
+  private readonly note: TFile | null;
+  private mode: 'current' | 'all' = 'current';
+  private contents = new Map<string, string>();
+  private items: ConversionItem[] = [];
+  private missing = 0;
+  private checkboxes = new Map<number, HTMLInputElement>();
+  private convertButton!: HTMLButtonElement;
 
-  constructor(app: App, settings: TyporianSettings) {
+  constructor(app: App, private settings: TyporianSettings,
+    private saveSettings: () => Promise<void>, note?: TFile | null, scope: 'current' | 'all' = 'current') {
     super(app);
-    this.settings = settings;
+    this.note = note === undefined ? app.workspace.getActiveFile() : note;
+    this.mode = scope;
   }
 
   async onOpen(): Promise<void> {
     this.titleEl.setText(t('wiki.title'));
-    await this.scanAndRender();
+    await this.refresh();
   }
 
-  onClose(): void {
+  onClose(): void { this.contentEl.empty(); }
+
+  private async scan(): Promise<void> {
+    this.contents.clear();
+    this.items = [];
+    this.missing = 0;
+    const notes = this.mode === 'all' ? this.app.vault.getMarkdownFiles()
+      : this.note?.extension === 'md' ? [this.note] : [];
+    for (const note of notes) {
+      const content = await this.app.vault.read(note);
+      this.contents.set(note.path, content);
+      for (const reference of parseWikiImages(content, this.settings.scanCodeBlocks)) {
+        if (isRemoteImagePath(reference.path)) continue;
+        const image = resolveActualWikiImage(this.app, note.path, reference.path, this.settings.manualAttachmentFolder);
+        if (!image) {
+          if (IMAGE_EXTENSIONS.has(reference.path.split('.').pop()?.toLowerCase() ?? '')) this.missing++;
+          continue;
+        }
+        this.items.push({ raw: reference.raw, offset: reference.index, alt: reference.alt,
+          note, line: content.slice(0, reference.index).split('\n').length, image,
+          reason: isWikiImageSize(reference.alt) ? 'size'
+            : image.path.split('/').some(segment => PathUtils.compatibleImageName(segment) !== segment) ? 'name' : null });
+      }
+    }
+  }
+
+  private async refresh(): Promise<void> {
     this.contentEl.empty();
-  }
-
-  private async scanAndRender(): Promise<void> {
+    this.contentEl.createEl('p', { text: t('wiki.scanning') });
+    await this.scan();
     this.contentEl.empty();
     this.checkboxes.clear();
-
-    this.contentEl.createEl('p', { text: t('wiki.scanning'), cls: 'orphan-status' });
-    this.items = await this.scanWikiLinks(this.scanMode);
-    this.contentEl.empty();
-
-    this.renderHeader();
-
-    if (this.items.length === 0) {
-      this.contentEl.createEl('p', { text: t('wiki.empty'), cls: 'orphan-status' });
-    } else {
-      this.renderList();
+    this.contentEl.createEl('p', { text: t('wiki.formatOnly'), cls: 'setting-item-description' });
+    const modes = this.contentEl.createDiv({ cls: 'wiki-mode-group' });
+    for (const mode of ['current', 'all'] as const) {
+      const button = modes.createEl('button', { text: t(mode === 'current' ? 'wiki.modeCurrent' : 'wiki.modeAll'),
+        cls: `wiki-mode-btn${this.mode === mode ? ' is-active' : ''}` });
+      button.addEventListener('click', () => { this.mode = mode; void this.refresh(); });
     }
-
-    this.renderFooter();
-    this.updateConvertButton();
-  }
-
-  private renderHeader(): void {
-    const header = this.contentEl.createDiv({ cls: 'orphan-header' });
-
-    // Scan mode toggle buttons
-    const modeGroup = header.createDiv({ cls: 'wiki-mode-group' });
-    const currentBtn = modeGroup.createEl('button', {
-      text: t('wiki.modeCurrent'),
-      cls: `wiki-mode-btn${this.scanMode === 'current' ? ' is-active' : ''}`,
-    });
-    const allBtn = modeGroup.createEl('button', {
-      text: t('wiki.modeAll'),
-      cls: `wiki-mode-btn${this.scanMode === 'all' ? ' is-active' : ''}`,
-    });
-    currentBtn.addEventListener('click', async () => {
-      this.scanMode = 'current';
-      await this.scanAndRender();
-    });
-    allBtn.addEventListener('click', async () => {
-      this.scanMode = 'all';
-      await this.scanAndRender();
-    });
-
-    // Select all
-    const selectAllLabel = header.createEl('label', { cls: 'orphan-select-all-label' });
-    this.selectAllCheckbox = selectAllLabel.createEl('input', { type: 'checkbox' });
-    selectAllLabel.createSpan({ text: t('orphan.selectAll') });
-    this.selectAllCheckbox.addEventListener('change', () => {
-      const newState = this.selectAllCheckbox!.checked;
-      this.checkboxes.forEach((cb) => { cb.checked = newState; });
-      this.updateConvertButton();
-    });
-
-    this.updateSummary();
-  }
-
-  private renderList(): void {
-    this.listContainer = this.contentEl.createDiv({ cls: 'orphan-list' });
-
-    for (let i = 0; i < this.items.length; i++) {
-      const item = this.items[i];
-      const isBroken = !item.resolvedFile;
-      const row = this.listContainer.createDiv({
-        cls: `orphan-item${isBroken ? ' wiki-item-broken' : ''}`,
+    this.contentEl.createEl('p', { text: this.mode === 'current' ? this.note?.path ?? t('share.noActive') : t('wiki.modeAll'), cls: 'orphan-path' });
+    const convertible = this.items.filter(item => !item.reason).length;
+    this.contentEl.createEl('p', { text: t('wiki.resultSummary', { convertible, missing: this.missing, retained: this.items.length - convertible }) });
+    if (this.missing || this.items.some(item => item.reason === 'name')) {
+      const check = this.contentEl.createEl('button', { text: t('wiki.openCheck') });
+      check.addEventListener('click', () => {
+        this.close();
+        new ImageCheckModal(this.app, this.settings, this.saveSettings, 'issues', this.note, this.mode).open();
       });
-
-      // Checkbox — only for resolvable items
-      if (!isBroken) {
+    }
+    if (!this.items.length) this.contentEl.createEl('p', { text: t('wiki.empty') });
+    if (convertible) {
+      const label = this.contentEl.createEl('label', { cls: 'orphan-select-all-label' });
+      const all = label.createEl('input', { type: 'checkbox' });
+      all.checked = true;
+      label.createSpan({ text: t('orphan.selectAll') });
+      all.addEventListener('change', () => {
+        for (const checkbox of this.checkboxes.values()) checkbox.checked = all.checked;
+        this.updateButton();
+      });
+    }
+    const list = this.contentEl.createDiv({ cls: 'orphan-list' });
+    this.items.forEach((item, index) => {
+      const row = list.createDiv({ cls: 'orphan-item' });
+      if (!item.reason) {
         const checkbox = row.createEl('input', { type: 'checkbox', cls: 'orphan-checkbox' });
         checkbox.checked = true;
-        this.checkboxes.set(i, checkbox);
-        checkbox.addEventListener('change', () => {
-          this.syncSelectAll();
-          this.updateConvertButton();
-        });
-      } else {
-        // Placeholder for alignment
-        row.createDiv({ cls: 'orphan-checkbox-placeholder' });
+        this.checkboxes.set(index, checkbox);
+        checkbox.addEventListener('change', () => this.updateButton());
       }
-
-      // Thumbnail — only for resolvable
-      if (item.resolvedFile) {
-        const img = row.createEl('img', { cls: 'orphan-thumbnail' });
-        img.src = this.app.vault.getResourcePath(item.resolvedFile);
-        img.alt = item.rawPath;
-      } else {
-        // Placeholder icon for broken
-        const iconEl = row.createDiv({ cls: 'wiki-broken-icon' });
-        iconEl.innerHTML = getIconSvg('link-2-off');
-      }
-
-      // Info
+      const preview = row.createEl('img', { cls: 'orphan-thumbnail' });
+      preview.src = this.app.vault.getResourcePath(item.image);
+      preview.alt = item.alt;
       const info = row.createDiv({ cls: 'orphan-info' });
-      info.createDiv({
-        text: item.rawLink,
-        cls: `orphan-path${isBroken ? ' wiki-broken-text' : ''}`,
-      });
-      info.createDiv({
-        text: `${item.notePath.split('/').pop()}:${item.line}`,
-        cls: 'orphan-size',
-      });
-
-      if (item.ambiguous) info.createDiv({ text: t('wiki.ambiguous'), cls: 'orphan-size' });
-
-      // Action buttons
-      const actions = row.createDiv({ cls: 'orphan-actions' });
-
-      // Navigate to line button
-      const gotoBtn = actions.createEl('button', {
-        cls: 'orphan-locate-btn',
-        attr: { 'aria-label': t('orphan.locateNote'), title: t('orphan.locateNote') },
-      });
-      gotoBtn.innerHTML = getIconSvg('file-text');
-      const notePath = item.notePath;
-      const lineNum = item.line;
-      gotoBtn.addEventListener('click', async (evt) => {
-        evt.stopPropagation();
-        const file = this.app.vault.getAbstractFileByPath(notePath);
-        if (!(file instanceof TFile)) return;
+      info.createDiv({ text: item.raw, cls: 'orphan-path' });
+      info.createDiv({ text: `${item.note.path}:${item.line}`, cls: 'orphan-size' });
+      info.createDiv({ text: item.image.path, cls: 'orphan-size' });
+      if (item.reason) info.createDiv({ text: t(item.reason === 'size' ? 'wiki.sizeRetained' : 'wiki.nameRetained'), cls: 'orphan-size' });
+      const locate = row.createEl('button', { text: t('orphan.locateNote') });
+      locate.addEventListener('click', async () => {
         const leaf = this.app.workspace.getLeaf();
-        await leaf.openFile(file);
-        const activeView = leaf.view;
-        if (activeView instanceof MarkdownView) {
-          const editor = activeView.editor;
-          const line = Math.max(0, lineNum - 1);
-          editor.setCursor(line, 0);
-          editor.scrollIntoView({ from: { line, ch: 0 }, to: { line, ch: 0 } }, true);
+        await leaf.openFile(item.note);
+        if (leaf.view instanceof MarkdownView && leaf.view.getMode() === 'source') {
+          const line = item.line - 1;
+          leaf.view.editor.setCursor(line, 0);
+          leaf.view.editor.scrollIntoView({ from: { line, ch: 0 }, to: { line, ch: 0 } }, true);
         }
       });
-
-      // Delete button — for broken items
-      if (isBroken && !item.ambiguous) {
-        const deleteBtn = actions.createEl('button', {
-          cls: 'orphan-locate-btn',
-          attr: { 'aria-label': t('orphan.removeLink'), title: t('orphan.removeLink') },
-        });
-        deleteBtn.innerHTML = getIconSvg('trash-2');
-        deleteBtn.addEventListener('click', async (evt) => {
-          evt.stopPropagation();
-          const file = this.app.vault.getAbstractFileByPath(notePath);
-          if (!(file instanceof TFile)) return;
-          let changed = false;
-          await this.app.vault.process(file, content => {
-            if (content !== this.scannedContents.get(notePath)) { changed = true; return content; }
-            return content.slice(0, item.offset) + content.slice(item.offset + item.rawLink.length);
-          });
-          if (changed) new Notice(t('common.contentChanged'));
-          await this.scanAndRender();
-        });
-      }
-
-      // Click row to toggle checkbox (only for resolvable)
-      if (!isBroken) {
-        row.addEventListener('click', (evt) => {
-          if (actions.contains(evt.target as Node)) return;
-          const cb = this.checkboxes.get(i);
-          if (!cb || evt.target === cb) return;
-          cb.checked = !cb.checked;
-          cb.dispatchEvent(new Event('change'));
-        });
-      }
-    }
-
-    // Set initial checkbox state
-    this.checkboxes.forEach((cb) => { cb.checked = true; });
-    if (this.selectAllCheckbox) this.selectAllCheckbox.checked = true;
-    this.updateConvertButton();
-  }
-
-  private renderFooter(): void {
+    });
     const footer = this.contentEl.createDiv({ cls: 'orphan-footer' });
-    const leftGroup = footer.createDiv({ cls: 'orphan-footer-left' });
-    const rightGroup = footer.createDiv({ cls: 'orphan-footer-right' });
-
-    const cancelBtn = leftGroup.createEl('button', { text: t('orphan.cancel') });
-    cancelBtn.addEventListener('click', () => this.close());
-
-    const refreshBtn = leftGroup.createEl('button', {
-      text: t('orphan.refresh'),
-      cls: 'orphan-repair-btn',
-    });
-    refreshBtn.addEventListener('click', () => this.scanAndRender());
-
-    // Right group: convert + clean broken (matches orphan modal layout)
-    const defaultText = this.scanMode === 'current' ? t('wiki.convertCurrent') : t('wiki.convertAll');
-    this.convertButton = rightGroup.createEl('button', {
-      text: defaultText,
-      cls: 'mod-cta',
-    });
-    this.convertButton.addEventListener('click', () => this.handleConvert());
-
-    const cleanBrokenBtn = rightGroup.createEl('button', {
-      text: t('wiki.cleanBroken'),
-      cls: 'mod-warning',
-    });
-    cleanBrokenBtn.addEventListener('click', () => this.handleCleanBroken());
+    footer.createEl('button', { text: t('orphan.cancel') }).addEventListener('click', () => this.close());
+    footer.createEl('button', { text: t('orphan.refresh') }).addEventListener('click', () => void this.refresh());
+    this.convertButton = footer.createEl('button', { cls: 'mod-cta' });
+    this.convertButton.addEventListener('click', () => void this.convert());
+    this.updateButton();
   }
 
-  private updateSummary(): void {
-    const old = this.contentEl.querySelector('.orphan-header .orphan-summary');
-    if (old) old.remove();
-    const header = this.contentEl.querySelector('.orphan-header');
-    if (header) {
-      const brokenCount = this.items.filter(i => !i.resolvedFile).length;
-      const resolvableCount = this.items.length - brokenCount;
-      let text = `${resolvableCount} ${t('wiki.summary')}`;
-      if (brokenCount > 0) {
-        text += ` · ${brokenCount} ${t('wiki.broken')}`;
-      }
-      this.summaryEl = header.createSpan({
-        text,
-        cls: 'orphan-summary',
-      });
-    }
+  private updateButton(): void {
+    const count = [...this.checkboxes.values()].filter(checkbox => checkbox.checked).length;
+    this.convertButton.textContent = t(this.mode === 'current' ? 'wiki.convertCurrentCount' : 'wiki.convertAllCount', { count });
+    this.convertButton.disabled = count === 0;
   }
 
-  private syncSelectAll(): void {
-    const allChecked = Array.from(this.checkboxes.values()).every((cb) => cb.checked);
-    if (this.selectAllCheckbox) this.selectAllCheckbox.checked = allChecked;
-  }
-
-  private updateConvertButton(): void {
-    if (!this.convertButton) return;
-    let count = 0;
-    this.checkboxes.forEach((cb) => { if (cb.checked) count++; });
-    if (this.scanMode === 'current') {
-      this.convertButton.textContent = count > 0
-        ? t('wiki.convertCurrentCount', { count })
-        : t('wiki.convertCurrent');
-    } else {
-      this.convertButton.textContent = count > 0
-        ? t('wiki.convertAllCount', { count })
-        : t('wiki.convertAll');
+  private async convert(): Promise<void> {
+    const selected = this.items.filter((_, index) => this.checkboxes.get(index)?.checked);
+    const notes = new Map<TFile, ConversionItem[]>();
+    for (const item of selected) {
+      if (!notes.has(item.note)) notes.set(item.note, []);
+      notes.get(item.note)!.push(item);
     }
-  }
-
-  private async handleConvert(): Promise<void> {
-    const selected = new Set<number>();
-    this.checkboxes.forEach((cb, i) => { if (cb.checked) selected.add(i); });
-    if (selected.size === 0) {
-      new Notice(t('wiki.empty'));
-      return;
-    }
-
-    // Group by note
-    const byNote = new Map<string, WikiLinkItem[]>();
-    for (const i of selected) {
-      const item = this.items[i];
-      if (!byNote.has(item.notePath)) byNote.set(item.notePath, []);
-      byNote.get(item.notePath)!.push(item);
-    }
-
-    let totalConverted = 0;
+    this.contentEl.inert = true;
+    let converted = 0;
     let changed = false;
-    for (const [notePath, noteItems] of byNote) {
-      const file = this.app.vault.getAbstractFileByPath(notePath);
-      if (!(file instanceof TFile)) continue;
-      const noteDir = file.parent?.path ?? '';
-      await this.app.vault.process(file, content => {
-        if (content !== this.scannedContents.get(notePath)) { changed = true; return content; }
-        for (const item of noteItems.sort((a, b) => b.offset - a.offset)) {
-          if (!item.resolvedFile) continue;
-          const relPath = PathUtils.computeRelativePath(noteDir, item.resolvedFile.path);
-          const alt = item.alt || item.resolvedFile.basename;
-          content = content.slice(0, item.offset) + createMarkdownImage(alt, relPath) + content.slice(item.offset + item.rawLink.length);
-          totalConverted++;
-        }
-        return content;
-      });
-    }
-    if (changed) new Notice(t('common.contentChanged'));
-
-    new Notice(t('wiki.convertDone', { count: totalConverted }));
-    await this.scanAndRender();
-  }
-
-  private async handleCleanBroken(): Promise<void> {
-    const brokenItems = this.items.filter(item => !item.resolvedFile && !item.ambiguous);
-    if (brokenItems.length === 0) {
-      new Notice(t('wiki.empty'));
-      return;
-    }
-
-    // Group by note
-    const byNote = new Map<string, WikiLinkItem[]>();
-    for (const item of brokenItems) {
-      if (!byNote.has(item.notePath)) byNote.set(item.notePath, []);
-      byNote.get(item.notePath)!.push(item);
-    }
-
-    let totalCleaned = 0;
-    let changed = false;
-    for (const [notePath, noteItems] of byNote) {
-      const file = this.app.vault.getAbstractFileByPath(notePath);
-      if (!(file instanceof TFile)) continue;
-      await this.app.vault.process(file, content => {
-        if (content !== this.scannedContents.get(notePath)) { changed = true; return content; }
-        for (const item of noteItems.sort((a, b) => b.offset - a.offset)) {
-          content = content.slice(0, item.offset) + content.slice(item.offset + item.rawLink.length);
-          totalCleaned++;
-        }
-        return content;
-      });
-    }
-    if (changed) new Notice(t('common.contentChanged'));
-
-    new Notice(t('wiki.cleanBrokenDone', { count: totalCleaned }));
-    await this.scanAndRender();
-  }
-
-  private async scanWikiLinks(mode: 'current' | 'all'): Promise<WikiLinkItem[]> {
-    const items: WikiLinkItem[] = [];
-    this.scannedContents.clear();
-
-    let files: TFile[];
-    if (mode === 'current') {
-      const view = this.app.workspace.getActiveViewOfType(MarkdownView);
-      files = view?.file ? [view.file] : [];
-    } else {
-      files = this.app.vault.getMarkdownFiles();
-    }
-
-    for (const mdFile of files) {
-      const content = await this.app.vault.read(mdFile);
-      this.scannedContents.set(mdFile.path, content);
-      for (const image of parseWikiImages(content, this.settings.scanCodeBlocks)) {
-        const rawPath = image.path;
-        if (!rawPath || isRemoteImagePath(rawPath)) continue;
-        const { file: resolved, ambiguous } = resolveWikiImage(this.app, mdFile.path, rawPath, this.settings.manualAttachmentFolder);
-
-        // Filter: only include if it looks like an image (has image extension, or resolved to image)
-        const ext = rawPath.split('.').pop()?.toLowerCase() || '';
-        const isImageExt = IMAGE_EXTENSIONS.has(ext);
-        const isResolvedImage = resolved && IMAGE_EXTENSIONS.has(resolved.extension.toLowerCase());
-
-        // Include if: resolved to image, OR has image extension (even if broken)
-        if (!isResolvedImage && !isImageExt) continue;
-
-        const line = content.substring(0, image.index).split('\n').length;
-        items.push({
-          rawLink: image.raw,
-          offset: image.index,
-          rawPath,
-          alt: image.alt,
-          notePath: mdFile.path,
-          line,
-          resolvedFile: isResolvedImage ? resolved! : null,
-          ambiguous: ambiguous,
+    try {
+      for (const [note, items] of notes) {
+        await this.app.vault.process(note, content => {
+          if (content !== this.contents.get(note.path)) { changed = true; return content; }
+          for (const item of items.sort((a, b) => b.offset - a.offset)) {
+            const destination = PathUtils.computeRelativePath(note.parent?.path ?? '', item.image.path);
+            content = content.slice(0, item.offset) + createMarkdownImage(item.alt, destination) + content.slice(item.offset + item.raw.length);
+            converted++;
+          }
+          return content;
         });
       }
-    }
-
-    return items;
+      if (changed) new Notice(t('common.contentChanged'));
+      new Notice(t('wiki.convertDone', { count: converted }));
+      await this.refresh();
+    } finally { this.contentEl.inert = false; }
   }
 }

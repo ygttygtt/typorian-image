@@ -455,3 +455,87 @@ body.typorian-hide-assets .workspace-leaf-content[data-type="file-explorer"]
 .nav-folder:has(> .nav-folder-title[data-path$=".assets"]) {
   display: none;
 }
+
+.typorian-image-check-modal .modal {
+  width: min(900px, 94vw);
+}
+
+.image-check-tabs,
+.image-check-toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.image-check-tabs button.is-active,
+.image-check-toolbar button.is-active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.image-check-scope,
+.image-check-help,
+.image-check-excerpt {
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.image-check-result {
+  padding: 10px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+}
+
+.image-check-list {
+  max-height: 52vh;
+  overflow-y: auto;
+}
+
+.image-check-item {
+  padding: 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+
+.image-check-reference {
+  display: block;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.image-check-status {
+  font-weight: 600;
+}
+
+.image-check-preview {
+  display: block;
+  max-width: 100%;
+  max-height: 120px;
+  object-fit: contain;
+  margin: 8px 0;
+}
+
+.image-check-path-button {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  height: auto;
+  text-align: left;
+}
+
+.image-check-target select {
+  max-width: 100%;
+}
+
+.image-check-select-all {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.image-check-folder-scope {
+  margin-bottom: 12px;
+  overflow-wrap: anywhere;
+}

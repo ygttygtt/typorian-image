@@ -2,7 +2,7 @@
 
 ## Scope and verification
 
-Typorian Image is an Obsidian plugin for Typora-compatible Markdown images. Current source version: **1.7.0**. Consult `docs/superpowers/plans/2026-10-08-image-workflow-optimization.md` and `docs/optimization-review-2026-10-08.md` for implementation and acceptance status. A package version, successful build, commit, installation, and desktop acceptance are different milestones.
+Typorian Image is an Obsidian plugin for Typora-compatible Markdown images. Current source version: **1.8.0**. Consult `docs/superpowers/plans/2026-10-08-image-check-workflow.md` for the current workflow and `docs/optimization-review-2026-10-08.md` for earlier 1.7.0 implementation and acceptance evidence. A package version, successful build, commit, installation, and desktop acceptance are different milestones.
 
 Follow the user's applicable AGENTS.md instructions. Do not add tests, checksums, implicit fallbacks, background services, or unrelated features. Do not run image cleanup, bulk link repair, or restructuring against the user's real vault without authorization for that data operation. Keep user notes, source images, unrelated settings, and changes by other contributors intact.
 
@@ -25,16 +25,16 @@ settings.ts                 Project-root settings interface, defaults, filename 
 src/constants.ts            MIME types and image extension mappings
 src/locale.ts               Chinese/English dictionaries and interpolation
 src/path-utils.ts           Filename compatibility, encoding/decoding, relative paths
-src/markdown-images.ts      Markdown/Wiki parsing, link generation, explicit/unique resolution
+src/markdown-images.ts      Shared parsing, link generation, actual Wiki target resolution
 src/code-block-filter.ts    Code-fence and inline-code ranges
 src/image-handler.ts        Ordered batch image saves and naming
 src/cm6-paste-plugin.ts     Event capture, receiving editor/note, pending insertion positions
 src/setting-tab.ts          Persisted settings UI
-src/orphan-types.ts         Image types and scan results
-src/orphan-detector.ts      Vault reference collection and .assets candidates
-src/orphan-modal.ts         Current/all scope, repair, explicit selection and trash
-src/broken-link-repairer.ts Exact-path and unique-name link repair
-src/wiki-converter-modal.ts Occurrence-based preview and conversion
+src/image-check-types.ts    Reference occurrences, unused files, scopes and action results
+src/image-checker.ts        Shared inspection, candidate indexes, repair/delete/trash actions
+src/image-check-modal.ts    Captured-note dual-tab check, selection, previews and More tools
+src/image-file-picker.ts    Existing vault image selection
+src/wiki-converter-modal.ts Format-only conversion with captured note/scope and size retention
 src/share-manager.ts        Shared attachment mapping, unique folder/ZIP output
 src/share-modal.ts          Vault-relative export UI and actual output notices
 src/restructure-manager.ts Per-note image copies, in-place links, unique copy directories
@@ -57,23 +57,27 @@ Use `createMarkdownImage()` for generated links and the shared path helpers thro
 
 ## Resolution and conversion
 
-Resolve exact paths first. A missing path may use a basename match only when exactly one image matches. Explicit Wiki paths remain path-based; the optional manual attachment directory participates in resolution. Ambiguous same-name candidates remain unresolved rather than selecting the first cache or vault match.
+Distinguish actual file targets from suggested repair candidates. `resolveActualWikiImage()` uses native Obsidian resolution for normal Wiki paths, handles explicit note-relative paths and literal special filenames, and supports the configured manual attachment directory. A valid native target must not be classified as broken merely because its path contains an otherwise discouraged filename character. Same-basename candidates are indexed once per scan and do not become actual export targets until explicitly repaired.
 
-Code examples are excluded by default. Repair/conversion honors the explicit scan-code-block setting; export/restructure skips code examples. Wiki conversion tracks each occurrence by source position. A changed note invalidates its old preview; rescan before applying.
+Image Check always skips fenced and inline code. The scan-code setting applies only to explicit Wiki conversion. Conversion accepts resolved compatible targets, tracks occurrences by position, and keeps `|300`/`|300x200` syntax because those are dimensions rather than alt text. Missing or incompatible references go to Image Check, with note/scope preserved; conversion does not delete links.
 
-## Image audit
+## Image Check
 
-Reference collection combines the resolved-link index with current Markdown/Wiki note contents. Scans are user-triggered, without a background loop. Candidate files are supported images under directories whose names end in `.assets`, including nested directories. Current-note scope uses the configured attachment directory boundary; references from other notes still count.
+The modal captures its TFile when opened. Current scope reads that note's references; all scope reads vault Markdown notes. Another note opened for inspection does not change the captured target. Preserve command IDs; ribbon visibility flags affect shortcuts only. New installs show Check and Share, with conversion/restructure reachable through More tools and commands. Preserve existing explicit shortcut preferences. Removed repair-time Wiki settings and orphan/broken-link modules must not be restored.
 
-Cleanup uses explicit selected images and rechecks current reference status before calling `vault.trash(file, false)`. Obsidian's internal trash is a filesystem location, not a plugin restoration UI. Audit does not clean source images outside `.assets` directories.
+Reference issues store exact offsets, source snapshots, syntax/alt/title, actual candidates and selected targets. Repair/delete apply only to selected occurrences through `vault.process`; changed note snapshots are skipped and reported. Deletion removes complete image syntax only. Repair preserves Markdown titles and Wiki aliases/dimensions. Incompatible filenames create a compatible copy in the configured attachment directory, reuse copies by source/directory within the action, and retain originals.
+
+Unused-file candidates use the current note's attachment folder and descendants, or the union of historical `.assets` folders and folders generated by the current attachment template in all scope. Whole-vault resolved-link facts and Markdown/Wiki contents determine references, including shared images. Broken-link candidate associations reuse that pass and are displayed separately from unassociated files. They remain suggestions, not valid references. Scans are user-triggered and cover supported vault references, not arbitrary external uses.
+
+Trash applies only to explicit selections, rechecks reference status, calls `vault.trash(file, false)`, and reports file count and bytes. Obsidian's `.trash` is a filesystem location, not a plugin restoration UI. Never clean arbitrary source directories beyond the configured candidate scope.
 
 ## Share and restructure
 
 Share destinations are vault-relative parent directories; empty means the vault root. Reject absolute system paths and `..` segments. The removed native folder picker must not be restored unless actual external filesystem export is implemented separately. Folder export creates a unique note-named directory; ZIP export creates a unique file. Notify and open the actual returned destination. Persist the open-folder setting.
 
-Each distinct source image gets its own destination name, while repeated references to the same source share one copy. Different same-name sources must not overwrite or collapse. Export supports Markdown and Wiki images and does not mutate originals.
+Each distinct source image gets its own destination name, while repeated references to the same source share one copy. Different same-name sources must not overwrite or collapse. Export supports Markdown and Wiki images and does not mutate originals. Ordinary Wiki becomes Markdown; dimension-bearing Wiki retains its syntax with a rewritten target. Return actual path, packaged image count, and unpackaged-reference count.
 
-Restructure mapping is per note. Copy mode creates a unique directory based on `restructureOutputFolder`, preserves note paths, and excludes prior output directories from future scans. In-place mode changes only selected notes, copies images with unique collision names, and reuses already correctly placed images. Unresolved references remain unchanged.
+Restructure mapping is per note. Copy mode creates a unique directory based on `restructureOutputFolder`, preserves note paths, and excludes prior output directories from future scans. In-place mode changes only selected notes, copies images with unique collision names, and reuses already correctly placed images. Unresolved references remain unchanged and their count appears in the preview. Restructure preserves source Markdown/Wiki syntax, including dimensions.
 
 **Source images are retained in all restructure modes.** Other notes and ordinary/HTML links may still reference them. Later cleanup is a separate explicit audit action. Do not require unrelated orphan cleanup before in-place restructuring and do not introduce automatic source-image deletion.
 

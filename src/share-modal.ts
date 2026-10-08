@@ -1,7 +1,7 @@
 import { App, Modal, Notice, TFile, Setting } from 'obsidian';
 import { TyporianSettings } from '../settings';
 import { ShareManager } from './share-manager';
-import { t } from './locale';
+import { t, isZh } from './locale';
 
 export class ShareModal extends Modal {
   private settings: TyporianSettings;
@@ -76,10 +76,13 @@ export class ShareModal extends Modal {
       const format = this.format;
       exportBtn.textContent = t('share.creating');
       try {
-        const outputPath = format === 'folder'
+        const result = format === 'folder'
           ? await this.manager.exportAsFolder(file, this.exportPath)
           : await this.manager.exportAsZip(file, this.exportPath);
-        new Notice(t('share.success', { path: outputPath }));
+        const outputPath = result.path;
+        new Notice(t('share.success', { path: outputPath }) + (isZh()
+          ? `；包含 ${result.images} 张图片，${result.unpackaged} 处未打包引用保留原文。`
+          : `; ${result.images} images, ${result.unpackaged} unpackaged references retained.`));
 
         if (this.settings.openFolderAfterExport) {
           const basePath = (this.app.vault.adapter as any).basePath;

@@ -4,7 +4,7 @@ import { ImageHandler } from './src/image-handler';
 import { createImagePastePlugin } from './src/cm6-paste-plugin';
 import { TyporianSettingTab } from './src/setting-tab';
 import { TyporianSettings, DEFAULT_SETTINGS } from './settings';
-import { OrphanImageModal } from './src/orphan-modal';
+import { ImageCheckModal } from './src/image-check-modal';
 import { ShareModal } from './src/share-modal';
 import { RestructureModal } from './src/restructure-modal';
 import { WikiConverterModal } from './src/wiki-converter-modal';
@@ -38,13 +38,13 @@ export default class TyporianImagePlugin extends Plugin {
     this.ribbonAuditEl = this.addRibbonIcon(
       this.settings.iconImageAudit || 'trash-2',
       t('orphan.title'),
-      () => { new OrphanImageModal(this.app, this.settings, () => this.saveSettings()).open(); }
+      () => { new ImageCheckModal(this.app, this.settings, () => this.saveSettings()).open(); }
     );
 
     this.ribbonWikiEl = this.addRibbonIcon(
       this.settings.iconWikiConverter || 'repeat-2',
       t('wiki.title'),
-      () => { new WikiConverterModal(this.app, this.settings).open(); }
+      () => { new WikiConverterModal(this.app, this.settings, () => this.saveSettings()).open(); }
     );
 
     if (!this.settings.showWikiConverter && this.ribbonWikiEl) {
@@ -72,21 +72,13 @@ export default class TyporianImagePlugin extends Plugin {
     this.addCommand({
       id: 'orphan-image-cleanup',
       name: t('orphan.title'),
-      callback: () => { new OrphanImageModal(this.app, this.settings, () => this.saveSettings()).open(); },
+      callback: () => { new ImageCheckModal(this.app, this.settings, () => this.saveSettings()).open(); },
     });
 
     this.addCommand({
       id: 'wiki-link-converter',
       name: t('wiki.title'),
-      checkCallback: (checking) => {
-        if (this.settings.showWikiConverter) {
-          if (!checking) {
-            new WikiConverterModal(this.app, this.settings).open();
-          }
-          return true;
-        }
-        return false;
-      },
+      callback: () => { new WikiConverterModal(this.app, this.settings, () => this.saveSettings()).open(); },
     });
 
     this.addCommand({
@@ -98,15 +90,7 @@ export default class TyporianImagePlugin extends Plugin {
     this.addCommand({
       id: 'restructure-vault',
       name: t('restructure.title'),
-      checkCallback: (checking) => {
-        if (this.settings.showRestructureTool) {
-          if (!checking) {
-            new RestructureModal(this.app, this.settings).open();
-          }
-          return true;
-        }
-        return false;
-      },
+      callback: () => { new RestructureModal(this.app, this.settings).open(); },
     });
   }
 
@@ -119,7 +103,13 @@ export default class TyporianImagePlugin extends Plugin {
   }
 
   async loadSettings(): Promise<void> {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const saved = await this.loadData();
+    this.settings = { ...DEFAULT_SETTINGS };
+    for (const key of Object.keys(DEFAULT_SETTINGS) as Array<keyof TyporianSettings>) {
+      if (saved && Object.prototype.hasOwnProperty.call(saved, key)) {
+        (this.settings as unknown as Record<string, unknown>)[key] = saved[key];
+      }
+    }
   }
 
   async saveSettings(): Promise<void> {

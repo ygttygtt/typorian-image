@@ -1,6 +1,6 @@
 import { PathUtils } from './path-utils';
 import { App, TFile } from 'obsidian';
-import { IMAGE_EXTENSIONS } from './orphan-types';
+import { IMAGE_EXTENSIONS } from './constants';
 import { extractCodeBlockRanges, isInsideCodeBlock } from './code-block-filter';
 
 export interface MarkdownImage {
@@ -141,28 +141,35 @@ export function resolveMarkdownImage(app: App, notePath: string, diskPath: strin
   return isImageFile(diskFile) ? diskFile : null;
 }
 
-/** Preserve explicit directory constraints; only bare names use unique-name matching. */
-export function resolveWikiImage(app: App, notePath: string, path: string, manualFolder = ''):
-  { file: TFile | null; ambiguous: boolean } {
+/** Wiki numeric aliases encode display dimensions, not Markdown alternative text. */
+export function isWikiImageSize(alias: string): boolean {
+  return /^\d+(?:x\d+)?$/i.test(alias.trim());
+}
+
+/** Existing Wiki targets follow Obsidian semantics, including shortest-path names. */
+export function resolveActualWikiImage(app: App, notePath: string, path: string, manualFolder = ''): TFile | null {
   const noteDir = notePath.includes('/') ? notePath.slice(0, notePath.lastIndexOf('/')) : '';
-  const relativePath = PathUtils.resolveVaultPath(noteDir, path);
-  if (relativePath === null) return { file: null, ambiguous: false };
-  const relative = app.vault.getAbstractFileByPath(relativePath);
+  const relative = PathUtils.resolveVaultPath(noteDir, path);
+  if (relative === null) return null;
   if (path.startsWith('./') || path.startsWith('../')) {
-    return { file: isImageFile(relative) ? relative : null, ambiguous: false };
+    const file = app.vault.getAbstractFileByPath(relative);
+    return isImageFile(file) ? file : null;
   }
-  if (path.includes('/')) {
-    const rootPath = PathUtils.resolveVaultPath('', path);
-    const root = rootPath === null ? null : app.vault.getAbstractFileByPath(rootPath);
-    if (isImageFile(root)) return { file: root, ambiguous: false };
+  if (!/[#?]/.test(path)) {
+    const native = app.metadataCache.getFirstLinkpathDest(path, notePath);
+    if (isImageFile(native) && (!path.includes('/') || native.path.endsWith(`/${path}`))) return native;
   }
-  if (isImageFile(relative)) return { file: relative, ambiguous: false };
+  const rootPath = PathUtils.resolveVaultPath('', path);
+  const root = rootPath === null ? null : app.vault.getAbstractFileByPath(rootPath);
+  const local = app.vault.getAbstractFileByPath(relative);
+  if (isImageFile(root)) return root;
+  if (path.includes('/') && isImageFile(local)) return local;
+  const native = app.metadataCache.getFirstLinkpathDest(path, notePath);
+  if (isImageFile(native) && (!path.includes('/') || native.path.endsWith(`/${path}`))) return native;
   if (manualFolder) {
-    const manualPath = PathUtils.resolveVaultPath(manualFolder, path);
-    const manual = manualPath === null ? null : app.vault.getAbstractFileByPath(manualPath);
-    if (isImageFile(manual)) return { file: manual, ambiguous: false };
+    const historicalPath = PathUtils.resolveVaultPath(manualFolder, path);
+    const historical = historicalPath === null ? null : app.vault.getAbstractFileByPath(historicalPath);
+    if (isImageFile(historical)) return historical;
   }
-  const matches = app.vault.getFiles().filter(file => isImageFile(file) &&
-    (path.includes('/') ? file.path.endsWith(`/${path}`) : file.name === path));
-  return { file: matches.length === 1 ? matches[0] : null, ambiguous: matches.length > 1 };
+  return null;
 }

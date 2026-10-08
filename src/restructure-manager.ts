@@ -1,7 +1,7 @@
 import { App, TFile, normalizePath } from 'obsidian';
 import { TyporianSettings } from '../settings';
 import { PathUtils } from './path-utils';
-import { assignImageNames, collectImageReferences, ImageReference, rewriteImageReferences } from './share-manager';
+import { assignImageNames, collectImageReferences, countUnpackagedReferences, ImageReference, rewriteImageReferences } from './share-manager';
 
 export interface RestructureEntry {
   sourcePath: string;
@@ -9,6 +9,7 @@ export interface RestructureEntry {
   type: 'note' | 'image';
   notePath: string;
   imageCount?: number;
+  unresolvedCount?: number;
 }
 
 export interface RestructurePlan {
@@ -29,11 +30,12 @@ export class RestructureManager {
     const mdFiles = this.app.vault.getMarkdownFiles().filter(file => !this.isOutputNote(file.path));
     let totalImages = 0;
     for (const note of mdFiles) {
-      const refs = collectImageReferences(this.app, note, await this.app.vault.read(note), this.settings.manualAttachmentFolder);
+      const content = await this.app.vault.read(note);
+      const refs = collectImageReferences(this.app, note, content, this.settings.manualAttachmentFolder);
       const names = assignImageNames(refs);
       const targetPath = `${outputDir}/${note.path}`;
       const noteEntry: RestructureEntry = {
-        sourcePath: note.path, targetPath, type: 'note', notePath: note.path, imageCount: names.size,
+        sourcePath: note.path, targetPath, type: 'note', notePath: note.path, imageCount: names.size, unresolvedCount: countUnpackagedReferences(content, refs),
       };
       entries.push(noteEntry);
       noteEntries.push(noteEntry);
@@ -62,7 +64,7 @@ export class RestructureManager {
       const targetDir = noteTarget.substring(0, noteTarget.lastIndexOf('/'));
       await this.ensureDir(targetDir);
       const paths = await this.copyImages(note, refs, `${targetDir}/${note.basename}.assets`);
-      await this.app.vault.create(normalizePath(noteTarget), rewriteImageReferences(content, refs, paths));
+      await this.app.vault.create(normalizePath(noteTarget), rewriteImageReferences(content, refs, paths, true));
     }
     return outputDir;
   }
@@ -83,7 +85,7 @@ export class RestructureManager {
       const noteDir = (note.parent?.path ?? '').replace(/^\/+$/, '');
       const assetsDir = normalizePath(noteDir ? `${noteDir}/${note.basename}.assets` : `${note.basename}.assets`);
       const paths = await this.copyImages(note, refs, assetsDir);
-      const newContent = rewriteImageReferences(content, refs, paths);
+      const newContent = rewriteImageReferences(content, refs, paths, true);
       if (newContent !== content) await this.app.vault.modify(note, newContent);
       processed++;
       onProgress?.(processed, entries.length);
