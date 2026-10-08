@@ -16,12 +16,18 @@ export class TyporianSettingTab extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
+    containerEl.addClass('typorian-ui', 'typorian-settings');
+    let section!: HTMLElement;
+    const heading = (title: string): void => {
+      section = containerEl.createDiv({ cls: 'ti-settings-section' });
+      section.createEl('h3', { text: title });
+    };
 
     // ========== Section: 图片粘贴 ==========
-    containerEl.createEl('h3', { text: t('settings.section.passive') });
+    heading(t('settings.section.passive'));
 
     // --- Intercept image path toggle ---
-    new Setting(containerEl)
+    new Setting(section)
       .setName(t('settings.interceptImage.name'))
       .setDesc(t('settings.interceptImage.desc'))
       .addToggle((toggle) =>
@@ -34,7 +40,7 @@ export class TyporianSettingTab extends PluginSettingTab {
       );
 
     // --- Naming strategy ---
-    new Setting(containerEl)
+    new Setting(section)
       .setName(t('settings.namingStrategy.name'))
       .setDesc(t('settings.namingStrategy.desc'))
       .addDropdown((dropdown) =>
@@ -49,7 +55,7 @@ export class TyporianSettingTab extends PluginSettingTab {
       );
 
     // --- Auto rename on conflict ---
-    new Setting(containerEl)
+    new Setting(section)
       .setName(t('settings.autoRename.name'))
       .setDesc(t('settings.autoRename.desc'))
       .addToggle((toggle) =>
@@ -62,7 +68,7 @@ export class TyporianSettingTab extends PluginSettingTab {
       );
 
     // --- Asset folder path ---
-    new Setting(containerEl)
+    new Setting(section)
       .setName(t('settings.assetPath.name'))
       .setDesc(t('settings.assetPath.desc'))
       .addText((text) =>
@@ -75,7 +81,7 @@ export class TyporianSettingTab extends PluginSettingTab {
           })
       );
 
-    new Setting(containerEl)
+    new Setting(section)
       .setName(t('settings.hideAssetFolders.name'))
       .setDesc(t('settings.hideAssetFolders.desc'))
       .addToggle((toggle) =>
@@ -89,10 +95,10 @@ export class TyporianSettingTab extends PluginSettingTab {
       );
 
     // ========== Section: 无主图片清理 ==========
-    containerEl.createEl('h3', { text: t('settings.section.parsing') });
+    heading(t('settings.section.parsing'));
 
     // --- Scan code blocks toggle ---
-    new Setting(containerEl)
+    new Setting(section)
       .setName(t('settings.scanCodeBlocks.name'))
       .setDesc(t('settings.scanCodeBlocks.desc'))
       .addToggle((toggle) =>
@@ -105,7 +111,7 @@ export class TyporianSettingTab extends PluginSettingTab {
       );
 
     // --- Manual attachment folder ---
-    new Setting(containerEl)
+    new Setting(section)
       .setName(t('settings.manualAttachmentFolder.name'))
       .setDesc(t('settings.manualAttachmentFolder.desc'))
       .addText((text) =>
@@ -118,8 +124,8 @@ export class TyporianSettingTab extends PluginSettingTab {
           })
       );
 
-    containerEl.createEl('h3', { text: t('settings.section.output') });
-    new Setting(containerEl)
+    heading(t('settings.section.output'));
+    new Setting(section)
       .setName(t('settings.restructureOutput.name'))
       .setDesc(t('settings.restructureOutput.desc'))
       .addText((text) => {
@@ -136,9 +142,9 @@ export class TyporianSettingTab extends PluginSettingTab {
         });
       });
 
-    containerEl.createEl('h3', { text: t('settings.section.shortcuts') });
+    heading(t('settings.section.shortcuts'));
     // --- Show Wiki converter toggle ---
-    new Setting(containerEl)
+    new Setting(section)
       .setName(t('settings.showWikiConverter.name'))
       .setDesc(t('settings.showWikiConverter.desc'))
       .addToggle((toggle) =>
@@ -152,7 +158,7 @@ export class TyporianSettingTab extends PluginSettingTab {
       );
 
     // --- Show restructure tool toggle ---
-    new Setting(containerEl)
+    new Setting(section)
       .setName(t('settings.showRestructure.name'))
       .setDesc(t('settings.showRestructure.desc'))
       .addToggle((toggle) =>
@@ -166,7 +172,7 @@ export class TyporianSettingTab extends PluginSettingTab {
       );
 
     // ========== Section: 图标设置 ==========
-    containerEl.createEl('h3', { text: t('settings.icons') });
+    heading(t('settings.icons'));
 
     const iconCategories: Array<{ key: keyof TyporianSettings; labelKey: string; category: string }> = [
       { key: 'iconImageAudit', labelKey: 'settings.icons.imageAudit', category: 'Image Audit' },
@@ -179,7 +185,7 @@ export class TyporianSettingTab extends PluginSettingTab {
       const presets = ICON_PRESETS[category] || [];
       const settingsMap = this.plugin.settings as unknown as Record<string, string>;
       const currentIcon = settingsMap[key as string] || presets[0];
-      const setting = new Setting(containerEl)
+      const setting = new Setting(section)
         .setName(t(labelKey as any));
 
       // Icon preview — inline inside setting-item-name
@@ -206,10 +212,9 @@ export class TyporianSettingTab extends PluginSettingTab {
     }
 
     // ========== Section: 当前行为 ==========
-    containerEl.createEl('h3', { text: t('settings.currentBehavior') });
-    const infoEl = containerEl.createEl('div', {
-      cls: 'setting-item-description',
-    });
+    const behavior = containerEl.createEl('details', { cls: 'ti-settings-guide' });
+    behavior.createEl('summary', { text: t('settings.currentBehavior') });
+    const infoEl = behavior.createDiv({ cls: 'ti-muted' });
     infoEl.createEl('p', { text: t('settings.currentBehavior.desc1') });
     infoEl.createEl('p', {
       text: `${t('settings.currentBehavior.desc2')}  ${this.plugin.settings.assetFolderPath}`,
@@ -219,10 +224,9 @@ export class TyporianSettingTab extends PluginSettingTab {
     });
 
     // ========== Section: Typora 配置对齐指南 ==========
-    containerEl.createEl('h3', { text: t('settings.typoraGuide') });
-    const guideEl = containerEl.createEl('div', {
-      cls: 'setting-item-description',
-    });
+    const guide = containerEl.createEl('details', { cls: 'ti-settings-guide' });
+    guide.createEl('summary', { text: t('settings.typoraGuide') });
+    const guideEl = guide.createDiv({ cls: 'ti-muted' });
     guideEl.createEl('p', { text: t('settings.typoraGuide.intro') });
     const steps = guideEl.createEl('ol');
     steps.createEl('li', { text: t('settings.typoraGuide.step1') });

@@ -2,7 +2,7 @@
 
 让 Obsidian 与 Typora 共用同一批 Markdown 笔记的图片插件。插入的图片保存到笔记同级的 `${notename}.assets/` 文件夹，链接使用标准 Markdown 图片语法。
 
-当前源码版本为 **1.8.1**。本机安装与实际运行验收的状态单独记录在[图片检查实施计划](docs/superpowers/plans/2026-10-08-image-check-workflow.md)，不能从版本号推断正式 Release 已发布。
+当前源码版本为 **1.8.2**。本机安装与实际运行验收的状态单独记录在[图片检查实施计划](docs/superpowers/plans/2026-10-08-image-check-workflow.md)，不能从版本号推断正式 Release 已发布。
 
 ## 功能
 

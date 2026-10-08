@@ -1,455 +1,3 @@
-/* Typorian Image Plugin Styles */
-
-/* Orphan Image Modal */
-.orphan-status {
-  text-align: center;
-  color: var(--text-muted);
-  padding: 24px 0;
-}
-
-.orphan-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--background-modifier-border);
-  margin-bottom: 8px;
-}
-
-.orphan-select-all-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  font-size: 0.9em;
-}
-
-.orphan-summary {
-  margin-left: auto;
-  font-size: 0.85em;
-  color: var(--text-muted);
-}
-
-.orphan-list {
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-.orphan-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 6px 8px;
-  border-bottom: 1px solid var(--background-modifier-border);
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.1s ease;
-}
-
-.orphan-item:hover {
-  background-color: var(--background-modifier-hover);
-}
-
-.orphan-checkbox {
-  flex-shrink: 0;
-  pointer-events: none;
-}
-
-.orphan-thumbnail {
-  width: 48px;
-  height: 48px;
-  object-fit: cover;
-  border-radius: 4px;
-  flex-shrink: 0;
-  background: var(--background-secondary);
-}
-
-.orphan-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.orphan-path {
-  font-family: var(--font-monospace);
-  font-size: 0.9em;
-  color: var(--text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.orphan-size {
-  font-size: 0.85em;
-  color: var(--text-faint);
-}
-
-.orphan-locate-btn {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  background: transparent;
-  border: none;
-  border-radius: 4px;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: color 0.1s ease, background-color 0.1s ease;
-}
-
-.orphan-locate-btn:hover {
-  color: var(--text-normal);
-  background-color: var(--background-modifier-hover);
-}
-
-.orphan-locate-btn:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-.orphan-actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.orphan-repair-btn {
-  color: var(--text-muted);
-  background: transparent;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 4px;
-  padding: 4px 12px;
-  cursor: pointer;
-  font-size: 0.9em;
-  transition: color 0.1s ease, border-color 0.1s ease;
-}
-
-.orphan-repair-btn:hover:not(:disabled) {
-  color: var(--text-normal);
-  border-color: var(--text-muted);
-}
-
-.orphan-repair-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.orphan-refresh-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  background: transparent;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 4px;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: color 0.1s ease, border-color 0.1s ease;
-}
-
-.orphan-refresh-btn:hover {
-  color: var(--text-normal);
-  border-color: var(--text-muted);
-}
-
-.orphan-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding-top: 12px;
-  border-top: 1px solid var(--background-modifier-border);
-  margin-top: 8px;
-}
-
-.orphan-footer-left {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.orphan-footer-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-/* Share Modal */
-.share-btn-container {
-  display: flex;
-  justify-content: flex-end;
-  padding-top: 12px;
-  border-top: 1px solid var(--background-modifier-border);
-  margin-top: 12px;
-}
-
-/* Restructure Modal */
-.restructure-warning {
-  color: var(--text-warning);
-  font-weight: 500;
-  padding: 8px 12px;
-  border-left: 3px solid var(--text-warning);
-  background: var(--background-modifier-warning);
-  border-radius: 2px;
-}
-
-.restructure-confirm-input {
-  width: 120px;
-  margin-right: 8px;
-}
-
-.restructure-warning-overwrite {
-  color: var(--text-error) !important;
-  font-weight: 600;
-}
-
-/* Make restructure modal resizable */
-.typorian-restructure-modal .modal {
-  resize: both;
-  overflow: auto;
-  min-width: 600px;
-  min-height: 400px;
-}
-
-/* Restructure Table */
-.restructure-table-container {
-  max-height: 400px;
-  overflow-y: auto;
-  margin: 8px 0;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 4px;
-}
-
-.restructure-table {
-  width: 100%;
-  table-layout: fixed;
-  border-collapse: collapse;
-  font-size: 0.9em;
-}
-
-.restructure-table th {
-  position: sticky;
-  top: 0;
-  background: var(--background-secondary);
-  text-align: left;
-  padding: 6px 10px;
-  font-weight: 600;
-  border-bottom: 1px solid var(--background-modifier-border);
-}
-
-.restructure-table td {
-  padding: 5px 10px;
-  border-bottom: 1px solid var(--background-modifier-border);
-  vertical-align: middle;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.restructure-th-check,
-.restructure-td-check {
-  width: 32px;
-  text-align: center;
-}
-
-.restructure-th-note,
-.restructure-td-note {
-  width: 30%;
-  font-weight: 500;
-}
-
-.restructure-th-assets,
-.restructure-td-assets {
-  width: 50%;
-  font-family: var(--font-monospace);
-  font-size: 0.85em;
-  color: var(--text-muted);
-}
-
-.restructure-th-images,
-.restructure-td-images {
-  width: 80px;
-  text-align: center;
-}
-
-.restructure-row-empty {
-  opacity: 0.5;
-}
-
-.restructure-no-images {
-  font-size: 0.8em;
-}
-
-/* Wiki toggle in orphan modal footer — inline, no button wrapper */
-.orphan-wiki-toggle {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  cursor: pointer;
-  font-size: 0.85em;
-  color: var(--text-muted);
-  user-select: none;
-  transition: color 0.1s ease;
-}
-
-.orphan-wiki-toggle:hover {
-  color: var(--text-normal);
-}
-
-.orphan-wiki-toggle-label {
-  white-space: nowrap;
-}
-
-.orphan-wiki-toggle-track {
-  position: relative;
-  width: 28px;
-  height: 16px;
-  background: var(--background-modifier-border);
-  border-radius: 8px;
-  transition: background-color 0.15s ease;
-  flex-shrink: 0;
-}
-
-.orphan-wiki-toggle-track.is-on {
-  background: var(--interactive-accent);
-}
-
-.orphan-wiki-toggle-thumb {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 12px;
-  height: 12px;
-  background: var(--text-on-accent);
-  border-radius: 50%;
-  transition: transform 0.15s ease;
-}
-
-.orphan-wiki-toggle-track.is-on .orphan-wiki-toggle-thumb {
-  transform: translateX(12px);
-}
-
-/* Icon preview in settings — absolute positioned at far left of setting row */
-.typorian-icon-preview {
-  display: inline-flex;
-  align-items: center;
-  vertical-align: middle;
-  margin-right: 6px;
-  color: var(--text-muted);
-}
-
-.typorian-icon-preview svg {
-  width: 16px;
-  height: 16px;
-  display: block;
-}
-
-/* Icon dropdown — consistent width */
-.setting-item:has(.typorian-icon-preview) .setting-item-control select,
-.setting-item:has(.typorian-icon-preview) .dropdown {
-  min-width: 120px;
-  width: 120px;
-}
-
-/* Broken image links section */
-.orphan-broken-section {
-  margin-top: 16px;
-  padding: 12px;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 8px;
-}
-
-.orphan-broken-section h4 {
-  margin: 0 0 4px;
-  font-size: 14px;
-  color: var(--text-error);
-}
-
-.orphan-broken-desc {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin: 0 0 8px;
-}
-
-.orphan-broken-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 4px 0;
-  font-size: 13px;
-}
-
-.orphan-broken-link {
-  font-family: var(--font-monospace);
-  color: var(--text-muted);
-  word-break: break-all;
-}
-
-.orphan-broken-line {
-  font-size: 11px;
-  color: var(--text-faint);
-  white-space: nowrap;
-  margin-left: 8px;
-}
-
-/* Wiki Converter Modal */
-.wiki-mode-group {
-  display: flex;
-  gap: 4px;
-  margin-right: 12px;
-}
-
-.wiki-mode-btn {
-  padding: 4px 12px;
-  font-size: 0.85em;
-  font-weight: 500;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 4px;
-  background: var(--interactive-normal);
-  color: var(--text-normal);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.wiki-mode-btn:hover {
-  background: var(--interactive-hover);
-}
-
-.wiki-mode-btn.is-active {
-  background: var(--interactive-accent);
-  color: var(--text-on-accent);
-  border-color: var(--interactive-accent);
-}
-
-/* Wiki broken items */
-.wiki-item-broken {
-  opacity: 0.7;
-}
-
-.wiki-broken-text {
-  color: var(--text-error);
-  text-decoration: line-through;
-}
-
-.wiki-broken-icon {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-faint);
-  flex-shrink: 0;
-}
-
-.orphan-checkbox-placeholder {
-  width: 18px;
-  flex-shrink: 0;
-}
 /* Hide the entire folder subtree, only inside the core file explorer. */
 body.typorian-hide-assets .workspace-leaf-content[data-type="file-explorer"]
 .nav-folder:has(> .nav-folder-title[data-path$=".assets"]) {
@@ -457,18 +5,18 @@ body.typorian-hide-assets .workspace-leaf-content[data-type="file-explorer"]
 }
 
 
-/* Image check: navigation, scope, results and actions have distinct hierarchy. */
-.typorian-image-check-modal .modal {
+/* Shared visual system for every Typorian Image surface. */
+.typorian-ui .modal {
   width: min(860px, 94vw);
 }
-.typorian-image-check-modal .modal-content { margin-top: 18px; }
-.typorian-image-check-modal .image-check-tabs {
+.typorian-ui .modal-content { margin-top: 18px; }
+.typorian-ui .image-check-tabs {
   display: flex;
   gap: 24px;
   border-bottom: 1px solid var(--background-modifier-border);
   margin-bottom: 16px;
 }
-.typorian-image-check-modal .image-check-tabs button {
+.typorian-ui .image-check-tabs button {
   box-shadow: none;
   border: 0;
   border-radius: 0;
@@ -478,33 +26,33 @@ body.typorian-hide-assets .workspace-leaf-content[data-type="file-explorer"]
   height: auto;
   border-bottom: 2px solid transparent;
 }
-.typorian-image-check-modal .image-check-tabs button.is-active {
+.typorian-ui .image-check-tabs button.is-active {
   border-bottom-color: var(--interactive-accent);
   color: var(--text-normal);
   font-weight: 600;
 }
-.typorian-image-check-modal .image-check-controls,
-.typorian-image-check-modal .image-check-context,
-.typorian-image-check-modal .image-check-utilities,
-.typorian-image-check-modal .image-check-batch,
-.typorian-image-check-modal .image-check-batch-buttons,
-.typorian-image-check-modal .image-check-row-header,
-.typorian-image-check-modal .image-check-row-actions {
+.typorian-ui .ti-toolbar,
+.typorian-ui .ti-context,
+.typorian-ui .ti-utilities,
+.typorian-ui .ti-batch,
+.typorian-ui .ti-footer-actions,
+.typorian-ui .ti-row-header,
+.typorian-ui .ti-row-actions {
   display: flex;
   align-items: center;
   gap: 10px;
 }
-.typorian-image-check-modal .image-check-controls { justify-content: space-between; }
-.typorian-image-check-modal .image-check-context { min-width: 0; flex: 1; }
-.typorian-image-check-modal .image-check-context select { flex-shrink: 0; }
-.typorian-image-check-modal .image-check-note {
+.typorian-ui .ti-toolbar { justify-content: space-between; }
+.typorian-ui .ti-context { min-width: 0; flex: 1; }
+.typorian-ui .ti-context select { flex-shrink: 0; }
+.typorian-ui .ti-context-name {
   color: var(--text-muted);
   font-size: var(--font-ui-small);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.typorian-image-check-modal .image-check-icon-button {
+.typorian-ui .ti-icon-button {
   background: transparent;
   box-shadow: none;
   padding: 6px;
@@ -512,30 +60,30 @@ body.typorian-hide-assets .workspace-leaf-content[data-type="file-explorer"]
   height: 30px;
   color: var(--text-muted);
 }
-.typorian-image-check-modal .image-check-icon-button:hover,
-.typorian-image-check-modal .image-check-path-button:hover,
-.typorian-image-check-modal .image-check-location:hover { background: var(--background-modifier-hover); }
-.typorian-image-check-modal .image-check-summary { margin: 20px 0 10px; font-weight: 500; }
-.typorian-image-check-modal .image-check-batch {
+.typorian-ui .ti-icon-button:hover,
+.typorian-ui .ti-text-button:hover,
+.typorian-ui .ti-location:hover { background: var(--background-modifier-hover); }
+.typorian-ui .ti-summary { margin: 20px 0 10px; font-weight: 500; }
+.typorian-ui .ti-batch {
   min-height: 48px;
   padding: 8px 0;
   border-bottom: 1px solid var(--background-modifier-border);
   margin-bottom: 12px;
   flex-wrap: wrap;
 }
-.typorian-image-check-modal .image-check-selected-count { color: var(--text-muted); font-size: var(--font-ui-small); }
-.typorian-image-check-modal .image-check-batch-buttons { margin-left: auto; }
-.typorian-image-check-modal .image-check-select-all { display: flex; gap: 8px; align-items: center; white-space: nowrap; }
-.typorian-image-check-modal .image-check-list { max-height: 48vh; overflow-y: auto; padding: 1px; }
-.typorian-image-check-modal .image-check-item {
+.typorian-ui .ti-muted { color: var(--text-muted); font-size: var(--font-ui-small); }
+.typorian-ui .ti-footer-actions { margin-left: auto; }
+.typorian-ui .ti-select-all { display: flex; gap: 8px; align-items: center; white-space: nowrap; }
+.typorian-ui .ti-list { max-height: 48vh; overflow-y: auto; padding: 1px; }
+.typorian-ui .ti-card {
   border: 1px solid var(--background-modifier-border);
   border-radius: 10px;
   padding: 16px;
   margin-bottom: 12px;
 }
-.typorian-image-check-modal .image-check-row-header { margin-bottom: 10px; }
-.typorian-image-check-modal .image-check-status { font-size: var(--font-ui-small); font-weight: 600; }
-.typorian-image-check-modal .image-check-location {
+.typorian-ui .ti-row-header { margin-bottom: 10px; }
+.typorian-ui .ti-status { font-size: var(--font-ui-small); font-weight: 600; }
+.typorian-ui .ti-location {
   margin-left: auto;
   max-width: 60%;
   overflow: hidden;
@@ -544,14 +92,14 @@ body.typorian-hide-assets .workspace-leaf-content[data-type="file-explorer"]
   font-size: var(--font-ui-smaller);
   color: var(--text-muted);
 }
-.typorian-image-check-modal .image-check-location,
-.typorian-image-check-modal .image-check-path-button,
-.typorian-image-check-modal .image-check-delete {
+.typorian-ui .ti-location,
+.typorian-ui .ti-text-button,
+.typorian-ui .ti-secondary-action {
   box-shadow: none;
   background: transparent;
   border: none;
 }
-.typorian-image-check-modal .image-check-reference {
+.typorian-ui .ti-reference {
   display: block;
   padding: 10px 12px;
   border-radius: 6px;
@@ -560,27 +108,94 @@ body.typorian-hide-assets .workspace-leaf-content[data-type="file-explorer"]
   overflow-wrap: anywhere;
   font-size: var(--font-ui-small);
 }
-.typorian-image-check-modal .image-check-file { display: flex; gap: 14px; align-items: center; margin: 14px 0; }
-.typorian-image-check-modal .image-check-preview { width: 72px; height: 64px; object-fit: contain; border-radius: 6px; background: var(--background-secondary); }
-.typorian-image-check-modal .image-check-file-info { min-width: 0; flex: 1; }
-.typorian-image-check-modal .image-check-path-button { padding: 0; color: var(--text-normal); height: auto; white-space: normal; text-align: left; overflow-wrap: anywhere; }
-.typorian-image-check-modal .image-check-file-path { display: block; color: var(--text-muted); font-size: var(--font-ui-smaller); overflow-wrap: anywhere; margin-top: 4px; }
-.typorian-image-check-modal .image-check-target select { max-width: 100%; margin-top: 12px; }
-.typorian-image-check-modal .image-check-row-actions { justify-content: flex-end; margin-top: 14px; flex-wrap: wrap; }
-.typorian-image-check-modal .image-check-delete { color: var(--text-muted); }
-.typorian-image-check-modal .image-check-delete:hover { color: var(--text-error); background: var(--background-modifier-hover); }
-.typorian-image-check-modal .image-check-help,
-.typorian-image-check-modal .image-check-excerpt,
-.typorian-image-check-modal .image-check-folder-scope { color: var(--text-muted); font-size: var(--font-ui-small); overflow-wrap: anywhere; }
-.typorian-image-check-modal .image-check-excerpt { margin-top: 8px; }
-.typorian-image-check-modal .image-check-result { padding: 12px; border-radius: 8px; background: var(--background-secondary); font-size: var(--font-ui-small); }
-.typorian-image-check-modal .image-check-empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 52px 20px; }
-.typorian-image-check-modal .image-check-empty-icon { color: var(--text-muted); margin-bottom: 12px; }
-.typorian-image-check-modal .image-check-empty-icon svg { width: 32px; height: 32px; }
-.typorian-image-check-modal .image-check-empty h3 { margin: 0 0 8px; font-size: var(--font-ui-medium); }
-.typorian-image-check-modal .image-check-empty p { color: var(--text-muted); margin: 0; font-size: var(--font-ui-small); }
-.typorian-image-check-modal .image-check-footnote { color: var(--text-muted); font-size: var(--font-ui-smaller); margin: 12px 0 0; }
+.typorian-ui .ti-file { display: flex; gap: 14px; align-items: center; margin: 14px 0; }
+.typorian-ui .ti-thumbnail { width: 72px; height: 64px; object-fit: contain; border-radius: 6px; background: var(--background-secondary); }
+.typorian-ui .ti-file-info { min-width: 0; flex: 1; }
+.typorian-ui .ti-text-button { padding: 0; color: var(--text-normal); height: auto; white-space: normal; text-align: left; overflow-wrap: anywhere; }
+.typorian-ui .ti-path { display: block; color: var(--text-muted); font-size: var(--font-ui-smaller); overflow-wrap: anywhere; margin-top: 4px; }
+.typorian-ui .image-check-target select { max-width: 100%; margin-top: 12px; }
+.typorian-ui .ti-row-actions { justify-content: flex-end; margin-top: 14px; flex-wrap: wrap; }
+.typorian-ui .ti-secondary-action { color: var(--text-muted); }
+.typorian-ui .ti-secondary-action:hover { color: var(--text-normal); background: var(--background-modifier-hover); }
+.typorian-ui .ti-destructive-action:hover { color: var(--text-error); }
+.typorian-ui .ti-muted,
+.typorian-ui .ti-details { color: var(--text-muted); font-size: var(--font-ui-small); overflow-wrap: anywhere; }
+.typorian-ui .ti-details { margin-top: 8px; }
+.typorian-ui .ti-feedback { padding: 12px; border-radius: 8px; background: var(--background-secondary); font-size: var(--font-ui-small); }
+.typorian-ui .ti-empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 52px 20px; }
+.typorian-ui .ti-empty-icon { color: var(--text-muted); margin-bottom: 12px; }
+.typorian-ui .ti-empty-icon svg { width: 32px; height: 32px; }
+.typorian-ui .ti-empty h3 { margin: 0 0 8px; font-size: var(--font-ui-medium); }
+.typorian-ui .ti-empty p { color: var(--text-muted); margin: 0; font-size: var(--font-ui-small); }
+.typorian-ui .ti-footnote { color: var(--text-muted); font-size: var(--font-ui-smaller); margin: 12px 0 0; }
 @media (max-width: 600px) {
-  .typorian-image-check-modal .image-check-context { align-items: flex-start; flex-direction: column; gap: 6px; }
-  .typorian-image-check-modal .image-check-batch-buttons { width: 100%; justify-content: flex-end; }
+  .typorian-ui .ti-context { align-items: flex-start; flex-direction: column; gap: 6px; }
+  .typorian-ui .ti-footer-actions { width: 100%; justify-content: flex-end; }
 }
+
+/* Shared forms, list tools, settings and native picker. */
+.typorian-ui { --ti-control-height: 32px; --ti-radius: 10px; }
+.typorian-ui .modal-title { font-size: var(--font-ui-large); font-weight: 600; }
+.typorian-ui .modal { max-height: 88vh; }
+.typorian-ui button { min-height: var(--ti-control-height); border-radius: 6px; }
+.typorian-ui input[type="text"], .typorian-ui select { min-height: var(--ti-control-height); border-radius: 6px; }
+.typorian-ui button:focus-visible, .typorian-ui select:focus-visible, .typorian-ui input:focus-visible {
+  outline: 2px solid var(--interactive-accent); outline-offset: 2px;
+}
+.typorian-ui .ti-intro { margin: 0 0 18px; color: var(--text-muted); font-size: var(--font-ui-small); line-height: 1.6; }
+.typorian-ui .ti-footer {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding-top: 16px; margin-top: 18px; border-top: 1px solid var(--background-modifier-border);
+}
+.typorian-ui .ti-footer-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.typorian-ui .ti-muted { font-size: var(--font-ui-small); color: var(--text-muted); line-height: 1.5; }
+.typorian-ui .ti-path { overflow-wrap: anywhere; color: var(--text-muted); font-size: var(--font-ui-smaller); }
+.typorian-ui .ti-warning { padding: 12px 14px; border-radius: 8px; background: var(--background-secondary); color: var(--text-muted); font-size: var(--font-ui-small); line-height: 1.5; }
+.typorian-ui .ti-warning.is-overwrite { color: var(--text-warning); border-left: 3px solid var(--text-warning); }
+.typorian-ui .ti-form-group { margin-bottom: 0; }
+.typorian-ui .setting-item { padding: 16px 0; gap: 24px; }
+.typorian-ui .setting-item-name { font-size: var(--font-ui-medium); }
+.typorian-ui .setting-item-description { font-size: var(--font-ui-small); line-height: 1.5; }
+.typorian-ui .setting-item-control { gap: 8px; }
+.typorian-ui .setting-item-control input[type="text"] { width: min(280px, 38vw); }
+.typorian-ui .ti-settings-section { margin-bottom: 24px; }
+.typorian-ui .ti-settings-section h3 { font-size: var(--font-ui-medium); margin: 0; padding: 12px 0; border-bottom: 1px solid var(--background-modifier-border); }
+.typorian-ui .ti-settings-guide { border: 1px solid var(--background-modifier-border); border-radius: var(--ti-radius); padding: 14px 16px; margin: 12px 0; }
+.typorian-ui .ti-settings-guide summary { font-weight: 500; cursor: pointer; }
+.typorian-ui .typorian-icon-preview { display: inline-flex; margin-right: 8px; vertical-align: middle; color: var(--text-muted); }
+.typorian-ui .typorian-icon-preview svg { width: 16px; height: 16px; }
+.typorian-ui .restructure-table-container { max-height: 38vh; overflow: auto; border: 1px solid var(--background-modifier-border); border-radius: var(--ti-radius); }
+.typorian-ui .restructure-table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: var(--font-ui-small); }
+.typorian-ui .restructure-table th { position: sticky; top: 0; background: var(--background-secondary); text-align: left; padding: 12px; border-bottom: 1px solid var(--background-modifier-border); font-weight: 500; }
+.typorian-ui .restructure-table td { padding: 12px; border-bottom: 1px solid var(--background-modifier-border); vertical-align: top; overflow-wrap: anywhere; }
+.typorian-ui .restructure-table tr:last-child td { border-bottom: 0; }
+.typorian-ui .restructure-row-selectable { cursor: pointer; }
+.typorian-ui .restructure-row-selectable:hover { background: var(--background-modifier-hover); }
+.typorian-ui .restructure-th-check, .typorian-ui .restructure-td-check { width: 38px; text-align: center; }
+.typorian-ui .restructure-th-note { width: 36%; }
+.typorian-ui .restructure-td-assets { color: var(--text-muted); font-size: var(--font-ui-smaller); }
+.typorian-ui .restructure-th-images, .typorian-ui .restructure-td-images { width: 70px; text-align: center; }
+.typorian-ui .restructure-row-empty { color: var(--text-muted); }
+.typorian-ui .restructure-confirm-input { width: 140px; }
+.typorian-ui .suggestion-item { padding: 12px 16px; border-radius: 6px; }
+.typorian-ui .suggestion-container { padding: 6px; }
+@media (max-width: 600px) {
+  .typorian-ui .ti-footer, .typorian-ui .ti-toolbar { flex-wrap: wrap; }
+  .typorian-ui .setting-item { align-items: flex-start; gap: 12px; flex-direction: column; }
+  .typorian-ui .setting-item-control { width: 100%; justify-content: flex-start; }
+  .typorian-ui .setting-item-control input[type="text"] { width: 100%; }
+  .typorian-ui .restructure-table { min-width: 520px; }
+}
+
+.typorian-ui .ti-footer > .ti-muted { flex: 1; min-width: 0; }
+.typorian-ui .ti-footer-actions { flex-shrink: 0; }
+.typorian-ui .restructure-confirm-group label { display: flex; flex-direction: column; gap: 8px; color: var(--text-muted); font-size: var(--font-ui-small); }
+.typorian-ui .ti-form-group .setting-item { align-items: flex-start; }
+.typorian-ui .ti-form-group .setting-item:not(:has(.checkbox-container)) { flex-direction: column; gap: 10px; }
+.typorian-ui .ti-form-group .setting-item-control { justify-content: flex-start; }
+.typorian-ui .ti-form-group .setting-item-control input[type="text"] { width: min(440px, 72vw); }
+.typorian-ui .ti-form-group .setting-item:last-child { border-bottom: 0; }
+.typorian-ui .ti-settings-section .setting-item:last-child { border-bottom: 0; }
+.typorian-ui .ti-list .ti-toolbar { margin-bottom: 12px; }
+.typorian-ui .ti-list h3 { font-size: var(--font-ui-small); color: var(--text-muted); font-weight: 500; }
+.typorian-ui .ti-batch .ti-muted { margin-left: auto; }

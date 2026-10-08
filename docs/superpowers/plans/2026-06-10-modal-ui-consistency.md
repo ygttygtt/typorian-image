@@ -1,5 +1,7 @@
 # Modal UI Consistency Implementation Plan
 
+> 历史方案，已由 [2026-10-08 图片检查与 UI 统一计划](2026-10-08-image-check-workflow.md) 替代。旧 orphan 窗口与本文的部署路径不再适用于当前版本。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Unify the interaction pattern of Orphan Modal and Wiki Converter Modal — both use header scope toggle + dynamic footer buttons.
