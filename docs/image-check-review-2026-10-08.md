@@ -1,6 +1,6 @@
 # Typorian Image 1.8.0 交付与验收记录
 
-源码实现、本机安装与核心桌面操作验收完成。GitHub 提交合并状态待本轮收尾写入；未发布 tag 或正式 Release。
+源码实现、本机安装与核心桌面操作验收完成。功能提交72c6dc6，GitHub交付见 [PR #2](https://github.com/ygttygtt/typorian-image/pull/2)，合并状态以PR为准；未发布 tag 或正式 Release。
 
 ## 实际改动
 
