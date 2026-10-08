@@ -9,7 +9,7 @@ body.typorian-hide-assets .workspace-leaf-content[data-type="file-explorer"]
 .typorian-ui .modal {
   width: min(860px, 94vw);
 }
-.typorian-ui .modal-content { margin-top: 18px; }
+.typorian-ui .modal .modal-content { margin-top: var(--ti-space-section); }
 .typorian-ui .image-check-tabs {
   display: flex;
   gap: 24px;
@@ -134,25 +134,35 @@ body.typorian-hide-assets .workspace-leaf-content[data-type="file-explorer"]
 }
 
 /* Shared forms, list tools, settings and native picker. */
-.typorian-ui { --ti-control-height: 32px; --ti-radius: 10px; }
-.typorian-ui .modal-title { font-size: var(--font-ui-large); font-weight: 600; }
+.typorian-ui {
+  --ti-control-height: 32px;
+  --ti-radius: 10px;
+  --ti-space-field: 12px;
+  --ti-space-section: 24px;
+}
+.typorian-ui .modal .modal-title { margin: 0; font-size: var(--font-ui-large); font-weight: 600; }
 .typorian-ui .modal { max-height: 88vh; }
 .typorian-ui button { min-height: var(--ti-control-height); border-radius: 6px; }
 .typorian-ui input[type="text"], .typorian-ui select { min-height: var(--ti-control-height); border-radius: 6px; }
 .typorian-ui button:focus-visible, .typorian-ui select:focus-visible, .typorian-ui input:focus-visible {
   outline: 2px solid var(--interactive-accent); outline-offset: 2px;
 }
-.typorian-ui .ti-intro { margin: 0 0 18px; color: var(--text-muted); font-size: var(--font-ui-small); line-height: 1.6; }
+.typorian-ui .modal .ti-intro { margin: 0 0 18px; color: var(--text-muted); font-size: var(--font-ui-small); line-height: 1.6; }
 .typorian-ui .ti-footer {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding-top: 16px; margin-top: 18px; border-top: 1px solid var(--background-modifier-border);
+  padding-top: 16px; margin-top: var(--ti-space-section); border-top: 1px solid var(--background-modifier-border);
 }
 .typorian-ui .ti-footer-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 .typorian-ui .ti-muted { font-size: var(--font-ui-small); color: var(--text-muted); line-height: 1.5; }
 .typorian-ui .ti-path { overflow-wrap: anywhere; color: var(--text-muted); font-size: var(--font-ui-smaller); }
 .typorian-ui .ti-warning { padding: 12px 14px; border-radius: 8px; background: var(--background-secondary); color: var(--text-muted); font-size: var(--font-ui-small); line-height: 1.5; }
 .typorian-ui .ti-warning.is-overwrite { color: var(--text-warning); border-left: 3px solid var(--text-warning); }
-.typorian-ui .ti-form-group { margin-bottom: 0; }
+.typorian-ui .ti-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ti-space-field);
+  margin: var(--ti-space-section) 0 0;
+}
 .typorian-ui .setting-item { padding: 16px 0; gap: 24px; }
 .typorian-ui .setting-item-name { font-size: var(--font-ui-medium); }
 .typorian-ui .setting-item-description { font-size: var(--font-ui-small); line-height: 1.5; }
@@ -190,8 +200,15 @@ body.typorian-hide-assets .workspace-leaf-content[data-type="file-explorer"]
 .typorian-ui .ti-footer > .ti-muted { flex: 1; min-width: 0; }
 .typorian-ui .ti-footer-actions { flex-shrink: 0; }
 .typorian-ui .restructure-confirm-group label { display: flex; flex-direction: column; gap: 8px; color: var(--text-muted); font-size: var(--font-ui-small); }
-.typorian-ui .ti-form-group .setting-item { align-items: flex-start; }
-.typorian-ui .ti-form-group .setting-item:not(:has(.checkbox-container)) { flex-direction: column; gap: 10px; }
+.typorian-ui .modal .ti-form-group .setting-item {
+  align-items: flex-start;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+.typorian-ui .modal .ti-form-group .setting-item-info { margin: 0; }
+.typorian-ui .modal .ti-form-group > p { margin: 0; }
+.typorian-ui .ti-form-group .setting-item:not(:has(.checkbox-container)) { flex-direction: column; gap: 8px; }
 .typorian-ui .ti-form-group .setting-item-control { justify-content: flex-start; }
 .typorian-ui .ti-form-group .setting-item-control input[type="text"] { width: min(440px, 72vw); }
 .typorian-ui .ti-form-group .setting-item:last-child { border-bottom: 0; }
