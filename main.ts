@@ -3,7 +3,7 @@ import { ViewPlugin } from '@codemirror/view';
 import { ImageHandler } from './src/image-handler';
 import { createImagePastePlugin } from './src/cm6-paste-plugin';
 import { TyporianSettingTab } from './src/setting-tab';
-import { TyporianSettings, DEFAULT_SETTINGS } from './src/settings';
+import { TyporianSettings, DEFAULT_SETTINGS } from './settings';
 import { OrphanImageModal } from './src/orphan-modal';
 import { ShareModal } from './src/share-modal';
 import { RestructureModal } from './src/restructure-modal';
@@ -38,7 +38,7 @@ export default class TyporianImagePlugin extends Plugin {
     this.ribbonAuditEl = this.addRibbonIcon(
       this.settings.iconImageAudit || 'trash-2',
       t('orphan.title'),
-      () => { new OrphanImageModal(this.app, this.settings).open(); }
+      () => { new OrphanImageModal(this.app, this.settings, () => this.saveSettings()).open(); }
     );
 
     this.ribbonWikiEl = this.addRibbonIcon(
@@ -54,7 +54,7 @@ export default class TyporianImagePlugin extends Plugin {
     this.ribbonShareEl = this.addRibbonIcon(
       this.settings.iconShare || 'share-2',
       t('share.title'),
-      () => { new ShareModal(this.app, this.settings).open(); }
+      () => { new ShareModal(this.app, this.settings, () => this.saveSettings()).open(); }
     );
 
     this.ribbonRestructureEl = this.addRibbonIcon(
@@ -72,7 +72,7 @@ export default class TyporianImagePlugin extends Plugin {
     this.addCommand({
       id: 'orphan-image-cleanup',
       name: t('orphan.title'),
-      callback: () => { new OrphanImageModal(this.app, this.settings).open(); },
+      callback: () => { new OrphanImageModal(this.app, this.settings, () => this.saveSettings()).open(); },
     });
 
     this.addCommand({
@@ -92,7 +92,7 @@ export default class TyporianImagePlugin extends Plugin {
     this.addCommand({
       id: 'share-note',
       name: t('share.title'),
-      callback: () => { new ShareModal(this.app, this.settings).open(); },
+      callback: () => { new ShareModal(this.app, this.settings, () => this.saveSettings()).open(); },
     });
 
     this.addCommand({

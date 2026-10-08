@@ -1,23 +1,25 @@
 import { App, Modal, Notice, TFile, MarkdownView } from 'obsidian';
-import { TyporianSettings } from './settings';
+import { TyporianSettings } from '../settings';
 import { getIconSvg } from './icon-utils';
 import { t } from './locale';
 import { IMAGE_EXTENSIONS } from './orphan-types';
-import { extractCodeBlockRanges, isInsideCodeBlock } from './code-block-filter';
 import { PathUtils } from './path-utils';
-const WIKI_REGEX = /!\[\[([^\]|]+?)(?:\|([^\]]*?))?\]\]/g;
+import { createMarkdownImage, isRemoteImagePath, parseWikiImages, resolveWikiImage } from './markdown-images';
 
 interface WikiLinkItem {
   rawLink: string;
+  offset: number;
   rawPath: string;
   alt: string;
   notePath: string;
   line: number;
   resolvedFile: TFile | null;
+  ambiguous: boolean;
 }
 
 export class WikiConverterModal extends Modal {
   private settings: TyporianSettings;
+  private scannedContents = new Map<string, string>();
   private items: WikiLinkItem[] = [];
   private checkboxes: Map<number, HTMLInputElement> = new Map();
   private selectAllCheckbox: HTMLInputElement | null = null;
@@ -87,9 +89,7 @@ export class WikiConverterModal extends Modal {
     this.selectAllCheckbox = selectAllLabel.createEl('input', { type: 'checkbox' });
     selectAllLabel.createSpan({ text: t('orphan.selectAll') });
     this.selectAllCheckbox.addEventListener('change', () => {
-      const allChecked = Array.from(this.checkboxes.values()).every((cb) => cb.checked);
-      // If all are checked, deselect all. Otherwise, select all.
-      const newState = !allChecked;
+      const newState = this.selectAllCheckbox!.checked;
       this.checkboxes.forEach((cb) => { cb.checked = newState; });
       this.updateConvertButton();
     });
@@ -143,6 +143,8 @@ export class WikiConverterModal extends Modal {
         cls: 'orphan-size',
       });
 
+      if (item.ambiguous) info.createDiv({ text: t('wiki.ambiguous'), cls: 'orphan-size' });
+
       // Action buttons
       const actions = row.createDiv({ cls: 'orphan-actions' });
 
@@ -160,8 +162,8 @@ export class WikiConverterModal extends Modal {
         if (!(file instanceof TFile)) return;
         const leaf = this.app.workspace.getLeaf();
         await leaf.openFile(file);
-        const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
-        if (activeView) {
+        const activeView = leaf.view;
+        if (activeView instanceof MarkdownView) {
           const editor = activeView.editor;
           const line = Math.max(0, lineNum - 1);
           editor.setCursor(line, 0);
@@ -170,22 +172,22 @@ export class WikiConverterModal extends Modal {
       });
 
       // Delete button — for broken items
-      if (isBroken) {
+      if (isBroken && !item.ambiguous) {
         const deleteBtn = actions.createEl('button', {
           cls: 'orphan-locate-btn',
           attr: { 'aria-label': t('orphan.removeLink'), title: t('orphan.removeLink') },
         });
         deleteBtn.innerHTML = getIconSvg('trash-2');
-        const rawLink = item.rawLink;
         deleteBtn.addEventListener('click', async (evt) => {
           evt.stopPropagation();
           const file = this.app.vault.getAbstractFileByPath(notePath);
           if (!(file instanceof TFile)) return;
-          const content = await this.app.vault.read(file);
-          const idx = content.indexOf(rawLink);
-          if (idx === -1) return;
-          const newContent = content.substring(0, idx) + content.substring(idx + rawLink.length);
-          await this.app.vault.modify(file, newContent);
+          let changed = false;
+          await this.app.vault.process(file, content => {
+            if (content !== this.scannedContents.get(notePath)) { changed = true; return content; }
+            return content.slice(0, item.offset) + content.slice(item.offset + item.rawLink.length);
+          });
+          if (changed) new Notice(t('common.contentChanged'));
           await this.scanAndRender();
         });
       }
@@ -292,43 +294,31 @@ export class WikiConverterModal extends Modal {
     }
 
     let totalConverted = 0;
-
+    let changed = false;
     for (const [notePath, noteItems] of byNote) {
       const file = this.app.vault.getAbstractFileByPath(notePath);
       if (!(file instanceof TFile)) continue;
-
-      const content = await this.app.vault.read(file);
-      const noteDir = (file.parent?.path ?? '').replace(/^\/+$/, '');
-      let newContent = content;
-
-      // Sort by position descending to preserve offsets
-      const positions = noteItems.map((item) => ({
-        item,
-        pos: newContent.indexOf(item.rawLink),
-      })).filter((p) => p.pos !== -1);
-      positions.sort((a, b) => b.pos - a.pos);
-
-      for (const { item, pos } of positions) {
-        if (!item.resolvedFile) continue;
-        const relPath = PathUtils.computeRelativePath(noteDir, item.resolvedFile.path);
-        const encodedPath = relPath.replace(/ /g, '%20');
-        const altText = item.alt || item.resolvedFile?.basename || item.rawPath.replace(/\.\w+$/, '');
-        const newLink = `![${altText}](${encodedPath})`;
-        newContent = newContent.substring(0, pos) + newLink + newContent.substring(pos + item.rawLink.length);
-        totalConverted++;
-      }
-
-      if (newContent !== content) {
-        await this.app.vault.modify(file, newContent);
-      }
+      const noteDir = file.parent?.path ?? '';
+      await this.app.vault.process(file, content => {
+        if (content !== this.scannedContents.get(notePath)) { changed = true; return content; }
+        for (const item of noteItems.sort((a, b) => b.offset - a.offset)) {
+          if (!item.resolvedFile) continue;
+          const relPath = PathUtils.computeRelativePath(noteDir, item.resolvedFile.path);
+          const alt = item.alt || item.resolvedFile.basename;
+          content = content.slice(0, item.offset) + createMarkdownImage(alt, relPath) + content.slice(item.offset + item.rawLink.length);
+          totalConverted++;
+        }
+        return content;
+      });
     }
+    if (changed) new Notice(t('common.contentChanged'));
 
     new Notice(t('wiki.convertDone', { count: totalConverted }));
     await this.scanAndRender();
   }
 
   private async handleCleanBroken(): Promise<void> {
-    const brokenItems = this.items.filter(item => !item.resolvedFile);
+    const brokenItems = this.items.filter(item => !item.resolvedFile && !item.ambiguous);
     if (brokenItems.length === 0) {
       new Notice(t('wiki.empty'));
       return;
@@ -342,30 +332,20 @@ export class WikiConverterModal extends Modal {
     }
 
     let totalCleaned = 0;
-
+    let changed = false;
     for (const [notePath, noteItems] of byNote) {
       const file = this.app.vault.getAbstractFileByPath(notePath);
       if (!(file instanceof TFile)) continue;
-
-      const content = await this.app.vault.read(file);
-      let newContent = content;
-
-      // Sort by position descending to preserve offsets
-      const positions = noteItems.map((item) => ({
-        item,
-        pos: newContent.indexOf(item.rawLink),
-      })).filter((p) => p.pos !== -1);
-      positions.sort((a, b) => b.pos - a.pos);
-
-      for (const { item, pos } of positions) {
-        newContent = newContent.substring(0, pos) + newContent.substring(pos + item.rawLink.length);
-        totalCleaned++;
-      }
-
-      if (newContent !== content) {
-        await this.app.vault.modify(file, newContent);
-      }
+      await this.app.vault.process(file, content => {
+        if (content !== this.scannedContents.get(notePath)) { changed = true; return content; }
+        for (const item of noteItems.sort((a, b) => b.offset - a.offset)) {
+          content = content.slice(0, item.offset) + content.slice(item.offset + item.rawLink.length);
+          totalCleaned++;
+        }
+        return content;
+      });
     }
+    if (changed) new Notice(t('common.contentChanged'));
 
     new Notice(t('wiki.cleanBrokenDone', { count: totalCleaned }));
     await this.scanAndRender();
@@ -373,6 +353,7 @@ export class WikiConverterModal extends Modal {
 
   private async scanWikiLinks(mode: 'current' | 'all'): Promise<WikiLinkItem[]> {
     const items: WikiLinkItem[] = [];
+    this.scannedContents.clear();
 
     let files: TFile[];
     if (mode === 'current') {
@@ -384,36 +365,11 @@ export class WikiConverterModal extends Modal {
 
     for (const mdFile of files) {
       const content = await this.app.vault.read(mdFile);
-      const codeRanges = this.settings.scanCodeBlocks ? [] : extractCodeBlockRanges(content);
-      let match: RegExpExecArray | null;
-      WIKI_REGEX.lastIndex = 0;
-
-      while ((match = WIKI_REGEX.exec(content)) !== null) {
-        if (codeRanges.length > 0 && isInsideCodeBlock(match.index, codeRanges)) continue;
-        const rawPath = match[1].trim();
-        if (!rawPath || rawPath.startsWith('http')) continue;
-
-        // Try to resolve
-        let resolved: TFile | null = this.app.metadataCache.getFirstLinkpathDest(rawPath, mdFile.path);
-
-        // Fallback 1: manual attachment folder
-        if (!resolved && this.settings.manualAttachmentFolder) {
-          const p = `${this.settings.manualAttachmentFolder}/${rawPath}`.replace(/\/\//g, '/');
-          const f = this.app.vault.getAbstractFileByPath(p);
-          if (f instanceof TFile && IMAGE_EXTENSIONS.has(f.extension.toLowerCase())) resolved = f;
-        }
-
-        // Fallback 2: Obsidian attachment config
-        if (!resolved) {
-          try {
-            const af = (this.app.vault as any).getConfig?.('attachmentFolderPath');
-            if (af && typeof af === 'string') {
-              const p = `${af}/${rawPath}`.replace(/\/\//g, '/');
-              const f = this.app.vault.getAbstractFileByPath(p);
-              if (f instanceof TFile && IMAGE_EXTENSIONS.has(f.extension.toLowerCase())) resolved = f;
-            }
-          } catch {}
-        }
+      this.scannedContents.set(mdFile.path, content);
+      for (const image of parseWikiImages(content, this.settings.scanCodeBlocks)) {
+        const rawPath = image.path;
+        if (!rawPath || isRemoteImagePath(rawPath)) continue;
+        const { file: resolved, ambiguous } = resolveWikiImage(this.app, mdFile.path, rawPath, this.settings.manualAttachmentFolder);
 
         // Filter: only include if it looks like an image (has image extension, or resolved to image)
         const ext = rawPath.split('.').pop()?.toLowerCase() || '';
@@ -423,14 +379,16 @@ export class WikiConverterModal extends Modal {
         // Include if: resolved to image, OR has image extension (even if broken)
         if (!isResolvedImage && !isImageExt) continue;
 
-        const line = content.substring(0, match.index).split('\n').length;
+        const line = content.substring(0, image.index).split('\n').length;
         items.push({
-          rawLink: match[0],
+          rawLink: image.raw,
+          offset: image.index,
           rawPath,
-          alt: match[2] || '',
+          alt: image.alt,
           notePath: mdFile.path,
           line,
-          resolvedFile: isResolvedImage ? resolved : null,
+          resolvedFile: isResolvedImage ? resolved! : null,
+          ambiguous: ambiguous,
         });
       }
     }

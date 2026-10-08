@@ -1,3 +1,9 @@
+/** Characters with path/link semantics in Obsidian or desktop filenames. */
+export const IMAGE_FILE_NAME_POLICY = {
+  unsupportedCharacters: /[<>:"/\\|?*#\[\]^]/g,
+  replacement: '_',
+};
+
 export interface TyporianSettings {
   namingStrategy: 'original' | 'timestamp';
   autoRenameOnConflict: boolean;
@@ -7,6 +13,7 @@ export interface TyporianSettings {
   enableWikiLinkConversion: boolean;
   scanCodeBlocks: boolean;
   showRestructureTool: boolean;
+  restructureOutputFolder: string;
   manualAttachmentFolder: string;
   iconImageAudit: string;
   iconShare: string;
@@ -25,6 +32,7 @@ export const DEFAULT_SETTINGS: TyporianSettings = {
   enableWikiLinkConversion: false,
   scanCodeBlocks: false,
   showRestructureTool: false,
+  restructureOutputFolder: '_Restructured_Vault',
   manualAttachmentFolder: '',
   iconImageAudit: 'trash-2',
   iconShare: 'share-2',

@@ -1,4 +1,17 @@
 type LocaleKey =
+  | 'image.batchError'
+  | 'image.conflict'
+  | 'image.error'
+  | 'image.editorChanged'
+  | 'common.contentChanged'
+  | 'wiki.ambiguous'
+  | 'share.invalidPath'
+  | 'share.rootFolder'
+  | 'restructure.overwriteSuccess'
+  | 'settings.restructureOutput.name'
+  | 'settings.restructureOutput.desc'
+  | 'settings.restructureOutput.invalid'
+
   | 'settings.namingStrategy.name'
   | 'settings.namingStrategy.desc'
   | 'settings.namingStrategy.original'
@@ -81,7 +94,6 @@ type LocaleKey =
   | 'restructure.scanning'
   | 'share.openFolder'
   | 'share.openFolder.desc'
-  | 'share.selectFolder'
   | 'restructure.noImages'
   | 'restructure.selected'
   | 'restructure.table.note'
@@ -90,7 +102,6 @@ type LocaleKey =
   | 'restructure.modeOverwrite'
   | 'restructure.modeSandboxDesc'
   | 'restructure.overwriteWarning'
-  | 'restructure.orphanBlock'
   | 'wiki.title'
   | 'wiki.scanning'
   | 'wiki.empty'
@@ -116,15 +127,28 @@ type LocaleKey =
   | 'wiki.toggleLabel';
 
 const zh: Record<LocaleKey, string> = {
+  'image.batchError': '这批图片未完成导入：{message}。修正原因后可以继续粘贴。',
+  "image.conflict": "已跳过同名图片：{path}。启用自动重命名可保留两张图片。",
+  "image.error": "图片 {name} 导入失败：{message}",
+  "image.editorChanged": "图片已保存到原笔记目录，但编辑器已切换：{path}。请在原笔记中插入链接。",
+  "common.contentChanged": "笔记内容已变化，请在刷新后的列表重新选择。",
+  "wiki.ambiguous": "存在多个同名图片，需手动确认路径",
+  "share.invalidPath": "请输入库内相对目录，留空表示库根；不支持绝对路径或上级目录。",
+  "share.rootFolder": "留空使用库根目录",
+  "restructure.overwriteSuccess": "已原地整理 {count} 篇笔记，原图片保留。",
+  "settings.restructureOutput.name": "重构副本目录",
+  "settings.restructureOutput.desc": "相对于库根目录。每次生成新的编号目录，已有副本不会再次重构。",
+  "settings.restructureOutput.invalid": "请输入非空的库内相对目录，不支持绝对路径或上级目录。",
+
   'settings.hideAssetFolders.name': '在文件列表中隐藏 .assets 文件夹',
   'settings.hideAssetFolders.desc': '隐藏所有名称以 .assets 结尾的图片文件夹。仅影响文件列表显示，图片链接和 Typora 读取保持正常；关闭后立即恢复显示。',
   'settings.namingStrategy.name': '图片命名策略',
-  'settings.namingStrategy.desc': '粘贴或拖放图片时的文件名生成方式。',
+  'settings.namingStrategy.desc': '保留可用原名或使用时间戳；Obsidian 不兼容的文件名字符会替换为下划线。',
   'settings.namingStrategy.original': '保留原始文件名',
-  'settings.namingStrategy.timestamp': '使用时间戳 (YYYYMMDDHHmmss)',
+  'settings.namingStrategy.timestamp': "使用毫秒时间戳（批量图片追加序号）",
   'settings.autoRename.name': '冲突时自动重命名',
   'settings.autoRename.desc':
-    '当资源文件夹中已存在同名文件时，自动追加序号。（如 image.png -> image(1).png）',
+    '启用时为同名图片追加序号；关闭时跳过冲突图片并提示，不覆盖已有图片。',
   'settings.currentBehavior': '当前行为',
   'settings.currentBehavior.desc1':
     '当您在笔记中粘贴或拖放图片时，插件会将其保存到笔记同级的资源文件夹中，并插入标准 Markdown 图片链接。',
@@ -177,11 +201,11 @@ const zh: Record<LocaleKey, string> = {
   'settings.wikiConversion.name': '修复时转换 Wiki 链接',
   'settings.wikiConversion.desc': '扫描时检测 ![[image.png]] 格式并转换为标准 Markdown 链接。',
   'settings.scanCodeBlocks.name': '扫描代码块内的链接',
-  'settings.scanCodeBlocks.desc': '开启后，修复功能会扫描代码块中的链接。默认关闭以保护代码示例。',
+  'settings.scanCodeBlocks.desc': '开启后，修复与 Wiki 转换会处理代码块中的链接。默认关闭；分享、整理始终保留代码示例。',
   'settings.showRestructure.name': '显示重构工具',
   'settings.showRestructure.desc': '开启后，左侧栏将出现重构工具入口。',
   'settings.manualAttachmentFolder.name': '手动指定附件目录',
-  'settings.manualAttachmentFolder.desc': '当 Obsidian 无法自动识别附件目录时，手动输入历史统一附件目录名称。留空则使用 Obsidian 设置。',
+  'settings.manualAttachmentFolder.desc': '为历史 Wiki 图片指定库内附件目录。留空时按显式路径或唯一文件名解析。',
   'settings.icons': '图标设置',
   'settings.icons.imageAudit': '图片审计按钮图标',
   'settings.icons.share': '分享按钮图标',
@@ -190,7 +214,7 @@ const zh: Record<LocaleKey, string> = {
   'share.folderFormat': '文件夹格式',
   'share.zipFormat': 'ZIP 压缩包',
   'share.exportPath': '导出路径',
-  'share.exportPath.desc': '相对于 Vault 根目录的导出路径',
+  'share.exportPath.desc': '库内相对目录；留空使用库根。每次导出生成新目录或 ZIP，不覆盖已有导出。',
   'share.creating': '正在导出...',
   'share.success': '已导出至 {path}',
   'share.error': '导出失败: {message}',
@@ -204,16 +228,14 @@ const zh: Record<LocaleKey, string> = {
   'restructure.scanning': '正在扫描 Vault...',
   'share.openFolder': '导出后打开文件夹',
   'share.openFolder.desc': '导出完成后自动打开目标文件夹',
-  'share.selectFolder': '选择导出路径',
   'restructure.noImages': '无图片引用，不生成 assets 文件夹',
   'restructure.selected': '已选择 {count} 篇文档',
   'restructure.table.note': '文档',
   'restructure.table.assets': '目标路径',
   'restructure.table.images': '图片数',
-  'restructure.modeOverwrite': '覆盖模式',
-  'restructure.modeSandboxDesc': '生成重构副本到 _Restructured_Vault/ 目录，不影响原文件',
-  'restructure.overwriteWarning': '警告：覆盖模式将直接修改原文件，此操作不可撤销！',
-  'restructure.orphanBlock': '检测到无主图片，请先清理后再执行覆盖重构。',
+  'restructure.modeOverwrite': '原地整理',
+  'restructure.modeSandboxDesc': '生成重构副本到 {path}/，原笔记和原图片保留。',
+  'restructure.overwriteWarning': '原地整理会修改所选笔记的图片链接并复制图片到各自的 .assets 目录，原图片保留。',
   'wiki.title': 'Wiki 链接转换',
   'wiki.scanning': '正在扫描 Wiki 链接...',
   'wiki.empty': '未发现 Wiki 图片链接。',
@@ -240,15 +262,28 @@ const zh: Record<LocaleKey, string> = {
 };
 
 const en: Record<LocaleKey, string> = {
+  'image.batchError': 'Image batch import failed: {message}. Correct the cause and paste again.',
+  "image.conflict": "Skipped an existing image: {path}. Enable auto-renaming to keep both images.",
+  "image.error": "Failed to import image {name}: {message}",
+  "image.editorChanged": "Images were saved for {path}, but its editor changed. Insert their links in the original note.",
+  "common.contentChanged": "Note contents have changed. Select items again from the refreshed list.",
+  "wiki.ambiguous": "Multiple images share this name. Confirm the path manually.",
+  "share.invalidPath": "Enter a vault-relative directory, or leave empty for the vault root. Absolute and parent paths are not supported.",
+  "share.rootFolder": "Leave empty for the vault root",
+  "restructure.overwriteSuccess": "Organized {count} notes in place. Original images were retained.",
+  "settings.restructureOutput.name": "Restructured copy folder",
+  "settings.restructureOutput.desc": "Relative to the vault root. Each run creates a new numbered folder; previous copies are excluded.",
+  "settings.restructureOutput.invalid": "Enter a nonempty vault-relative folder. Absolute and parent paths are not supported.",
+
   'settings.hideAssetFolders.name': 'Hide .assets folders in the file explorer',
   'settings.hideAssetFolders.desc': 'Hide all folders whose names end in .assets. Only affects the file explorer; image links and Typora access continue to work. Disable to show the folders again.',
   'settings.namingStrategy.name': 'Image naming strategy',
-  'settings.namingStrategy.desc': 'How image filenames are generated when pasted or dropped.',
+  'settings.namingStrategy.desc': 'Keep a compatible original name or use a timestamp; unsupported filename characters become underscores.',
   'settings.namingStrategy.original': 'Keep original filename',
-  'settings.namingStrategy.timestamp': 'Use timestamp (YYYYMMDDHHmmss)',
+  'settings.namingStrategy.timestamp': "Millisecond timestamp (numbered within a batch)",
   'settings.autoRename.name': 'Auto-rename on conflict',
   'settings.autoRename.desc':
-    'Append a sequence number when a file with the same name already exists in the assets folder. (e.g. image.png -> image(1).png)',
+    'Append a number for duplicate names. When disabled, conflicting images are skipped with a notice; existing images are retained.',
   'settings.currentBehavior': 'Current behavior',
   'settings.currentBehavior.desc1':
     'When you paste or drop an image into a note, the plugin saves it to the note\'s sibling assets folder and inserts a standard Markdown image link.',
@@ -302,11 +337,11 @@ const en: Record<LocaleKey, string> = {
   'settings.wikiConversion.name': 'Convert Wiki links when repairing',
   'settings.wikiConversion.desc': 'Detect ![[image.png]] format during scan and convert to standard Markdown links.',
   'settings.scanCodeBlocks.name': 'Scan links inside code blocks',
-  'settings.scanCodeBlocks.desc': 'When enabled, repair scans links inside code blocks. Disabled by default to protect code examples.',
+  'settings.scanCodeBlocks.desc': 'When enabled, repair and Wiki conversion include code blocks. Sharing and organizing always preserve code examples.',
   'settings.showRestructure.name': 'Show restructure tool',
   'settings.showRestructure.desc': 'When enabled, the restructure tool appears in the ribbon.',
   'settings.manualAttachmentFolder.name': 'Manual attachment folder',
-  'settings.manualAttachmentFolder.desc': 'Manually specify the attachment folder name when Obsidian cannot auto-detect it. Leave empty to use Obsidian\'s setting.',
+  'settings.manualAttachmentFolder.desc': 'Specify a vault-relative attachment directory for historical Wiki images. Leave empty to resolve explicit paths or unique filenames.',
   'settings.icons': 'Icon Settings',
   'settings.icons.imageAudit': 'Image Audit button icon',
   'settings.icons.share': 'Share button icon',
@@ -315,7 +350,7 @@ const en: Record<LocaleKey, string> = {
   'share.folderFormat': 'Folder format',
   'share.zipFormat': 'ZIP archive',
   'share.exportPath': 'Export path',
-  'share.exportPath.desc': 'Export path relative to vault root',
+  'share.exportPath.desc': 'Vault-relative directory; leave empty for the vault root. Each export creates a new folder or ZIP.',
   'share.creating': 'Exporting...',
   'share.success': 'Exported to {path}',
   'share.error': 'Export failed: {message}',
@@ -329,16 +364,14 @@ const en: Record<LocaleKey, string> = {
   'restructure.scanning': 'Scanning vault...',
   'share.openFolder': 'Open folder after export',
   'share.openFolder.desc': 'Automatically open the target folder after export',
-  'share.selectFolder': 'Select export path',
   'restructure.noImages': 'No image references, assets folder will not be created',
   'restructure.selected': 'Selected {count} note(s)',
   'restructure.table.note': 'Note',
   'restructure.table.assets': 'Target Path',
   'restructure.table.images': 'Images',
-  'restructure.modeOverwrite': 'Overwrite',
-  'restructure.modeSandboxDesc': 'Generate restructured copy in _Restructured_Vault/ without touching originals',
-  'restructure.overwriteWarning': 'Warning: Overwrite mode will modify original files. This cannot be undone!',
-  'restructure.orphanBlock': 'Orphan images detected. Please clean up orphan images before overwrite restructure.',
+  'restructure.modeOverwrite': 'Organize in place',
+  'restructure.modeSandboxDesc': 'Create a restructured copy in {path}/. Original notes and images are retained.',
+  'restructure.overwriteWarning': 'Organize selected notes in place: update image links and copy images into each note’s .assets folder. Original images are retained.',
   'wiki.title': 'Wiki Link Converter',
   'wiki.scanning': 'Scanning wiki links...',
   'wiki.empty': 'No wiki image links found.',

@@ -1,24 +1,19 @@
-import { App, TFile, normalizePath } from 'obsidian';
+import { App, TFile, editorInfoField } from 'obsidian';
 import { EditorView } from '@codemirror/view';
 import { IMAGE_EXTENSIONS, UnresolvableLink } from './orphan-types';
-import { extractCodeBlockRanges, isInsideCodeBlock, Range } from './code-block-filter';
-import { TyporianSettings } from './settings';
+import { extractCodeBlockRanges, isInsideCodeBlock } from './code-block-filter';
+import { TyporianSettings } from '../settings';
 import { PathUtils } from './path-utils';
-
-// Matches standard markdown image: ![alt](path)
-const MD_IMAGE_REGEX = /!\[([^\]]*)\]\(([^)]+)\)/g;
-
-// Matches wiki embed: ![[path]] or ![[path|alias]]
-const WIKI_EMBED_REGEX = /!\[\[([^\]|]+?)(?:\|([^\]]*?))?\]\]/g;
+import { parseMarkdownImages, createMarkdownImage, isRemoteImagePath, parseWikiImages, resolveWikiImage, resolveMarkdownImage } from './markdown-images';
 
 interface BrokenMatch {
   from: number;
   to: number;
   alt: string;
-  rawPath: string;
-  cleanedPath: string;
-  fileName: string;
+  path: string;
+  title: string;
   isWiki: boolean;
+  resolved: TFile | null;
 }
 
 export interface RepairResult {
@@ -27,480 +22,105 @@ export interface RepairResult {
   total: number;
 }
 
-export interface RepairAllResult {
-  scanned: number;
-  brokenFixed: number;
-  wikiConverted: number;
-  total: number;
-}
+export interface RepairAllResult extends RepairResult { scanned: number; }
 
 export class BrokenLinkRepairer {
-  constructor(
-    private app: App,
-    private settings?: TyporianSettings
-  ) {}
+  constructor(private app: App, private settings?: TyporianSettings) {}
 
-  /**
-   * Try to resolve a wiki link path to a TFile using multiple strategies.
-   * Returns the resolved TFile if found and is an image, null otherwise.
-   */
-  private tryResolveWikiLink(
-    rawPath: string,
-    sourcePath: string,
-    noteDir: string,
-    vaultImages: Map<string, TFile[]>
-  ): TFile | null {
-    // Primary: Obsidian API
-    let resolved: TFile | null = this.app.metadataCache.getFirstLinkpathDest(rawPath, sourcePath);
-
-    // Fallback 1: manual attachment folder
-    if (!resolved && this.settings?.manualAttachmentFolder) {
-      const manualPath = normalizePath(`${this.settings.manualAttachmentFolder}/${rawPath}`);
-      const manualFile = this.app.vault.getAbstractFileByPath(manualPath);
-      if (manualFile instanceof TFile && IMAGE_EXTENSIONS.has(manualFile.extension.toLowerCase())) {
-        resolved = manualFile;
-      }
-    }
-
-    // Fallback 2: Obsidian's configured attachment folder
-    if (!resolved) {
-      try {
-        const attachmentFolder = (this.app.vault as any).getConfig?.('attachmentFolderPath');
-        if (attachmentFolder && typeof attachmentFolder === 'string') {
-          const attachPath = normalizePath(`${attachmentFolder}/${rawPath}`);
-          const attachFile = this.app.vault.getAbstractFileByPath(attachPath);
-          if (attachFile instanceof TFile && IMAGE_EXTENSIONS.has(attachFile.extension.toLowerCase())) {
-            resolved = attachFile;
-          }
-        }
-      } catch { /* skip */ }
-    }
-
-    if (resolved && IMAGE_EXTENSIONS.has(resolved.extension.toLowerCase())) {
-      return resolved;
-    }
-
-    // Fallback 3: vault-wide fuzzy search
-    const fileName = rawPath.split('/').pop() || rawPath;
-    const ext = fileName.split('.').pop()?.toLowerCase();
-    if (ext && IMAGE_EXTENSIONS.has(ext)) {
-      const found = this.searchVault(vaultImages, fileName, noteDir);
-      if (found) {
-        const resolvedPath = this.resolveRelativePath(noteDir, found);
-        const file = this.app.vault.getAbstractFileByPath(normalizePath(resolvedPath));
-        if (file instanceof TFile) return file;
-      }
-    }
-
-    return null;
-  }
-
-  /**
-   * Repair broken image links in the active note (via EditorView).
-   * Returns repair counts (broken + wiki), or null if no active note.
-   */
-  async repair(view: EditorView): Promise<RepairResult | null> {
-    const activeFile = this.getActiveFile();
-    if (!activeFile) return null;
-
-    const content = view.state.doc.toString();
-    const noteDir = activeFile.parent?.path ?? '';
-
-    const vaultImages = this.buildVaultImageIndex();
-    const broken = this.findBrokenLinks(content, noteDir, activeFile.path, vaultImages);
-    if (broken.length === 0) return { brokenFixed: 0, wikiConverted: 0, total: 0 };
-
-    const replacements = this.computeReplacements(broken, vaultImages, noteDir);
-
-    if (replacements.length > 0) {
-      replacements.sort((a, b) => b.from - a.from);
-      for (const r of replacements) {
-        view.dispatch({
-          changes: { from: r.from, to: r.to, insert: r.insert },
-        });
-      }
-    }
-
-    const wikiConverted = replacements.filter(r => r.isWiki).length;
-    const brokenFixed = replacements.length - wikiConverted;
-    return { brokenFixed, wikiConverted, total: replacements.length };
-  }
-
-  /**
-   * Repair broken image links across ALL markdown notes in the vault.
-   * Operates directly on file content (no editor needed).
-   */
-  async repairAll(): Promise<RepairAllResult> {
-    const mdFiles = this.app.vault.getMarkdownFiles();
-    const vaultImages = this.buildVaultImageIndex();
-    let scanned = 0;
-    let brokenFixed = 0;
-    let wikiConverted = 0;
-
-    for (const mdFile of mdFiles) {
-      const content = await this.app.vault.read(mdFile);
-      const noteDir = mdFile.parent?.path ?? '';
-
-      const broken = this.findBrokenLinks(content, noteDir, mdFile.path, vaultImages);
-      if (broken.length === 0) {
-        scanned++;
-        continue;
-      }
-
-      const replacements = this.computeReplacements(broken, vaultImages, noteDir);
-      if (replacements.length === 0) {
-        scanned++;
-        continue;
-      }
-
-      // Apply replacements from end to start (preserve offsets)
-      replacements.sort((a, b) => b.from - a.from);
-      let newContent = content;
-      for (const r of replacements) {
-        newContent = newContent.substring(0, r.from) + r.insert + newContent.substring(r.to);
-      }
-
-      await this.app.vault.modify(mdFile, newContent);
-      brokenFixed += replacements.filter(r => !r.isWiki).length;
-      wikiConverted += replacements.filter(r => r.isWiki).length;
-      scanned++;
-    }
-
-    return { scanned, brokenFixed, wikiConverted, total: brokenFixed + wikiConverted };
-  }
-
-  /**
-   * Find image links in content that cannot be resolved to any vault file.
-   * Unlike findBrokenLinks (which returns repairable links), this returns
-   * links that are truly unresolvable — the images may be lost or corrupted.
-   */
-  findUnresolvableLinks(
-    content: string,
-    noteDir: string,
-    sourcePath: string
-  ): UnresolvableLink[] {
-    const unresolvable: UnresolvableLink[] = [];
-    const codeRanges = (!this.settings || this.settings.scanCodeBlocks)
-      ? [] : extractCodeBlockRanges(content);
-
-    const vaultImages = this.buildVaultImageIndex();
-
-    // Check markdown image links
-    MD_IMAGE_REGEX.lastIndex = 0;
-    let match: RegExpExecArray | null;
-    while ((match = MD_IMAGE_REGEX.exec(content)) !== null) {
-      if (codeRanges.length > 0 && isInsideCodeBlock(match.index, codeRanges)) continue;
-      const rawPath = match[2];
-      if (rawPath.startsWith('http://') || rawPath.startsWith('https://')) continue;
-
-      const cleanedPath = this.cleanPath(rawPath);
-      const fileName = this.extractFileName(cleanedPath);
-      if (!fileName) continue;
-
-      // Try direct resolution
-      const resolvedPath = this.resolveRelativePath(noteDir, cleanedPath);
-      const existing = this.app.vault.getAbstractFileByPath(normalizePath(resolvedPath));
-      if (existing instanceof TFile && IMAGE_EXTENSIONS.has(existing.extension.toLowerCase())) continue;
-
-      // Try encoded
-      if (cleanedPath.includes(' ')) {
-        const enc = this.resolveRelativePath(noteDir, cleanedPath.replace(/ /g, '%20'));
-        const encFile = this.app.vault.getAbstractFileByPath(normalizePath(enc));
-        if (encFile instanceof TFile && IMAGE_EXTENSIONS.has(encFile.extension.toLowerCase())) continue;
-      }
-
-      // Try vault search (includes fuzzy matching)
-      const found = this.searchVault(vaultImages, fileName, noteDir);
-      if (found) continue; // repairable via vault search
-
-      // Truly unresolvable
-      const line = content.substring(0, match.index).split('\n').length;
-      unresolvable.push({ rawLink: match[0], rawPath, isWiki: false, line });
-    }
-
-    // Check wiki links (if enabled)
-    if (this.settings?.enableWikiLinkConversion) {
-      WIKI_EMBED_REGEX.lastIndex = 0;
-      while ((match = WIKI_EMBED_REGEX.exec(content)) !== null) {
-        if (codeRanges.length > 0 && isInsideCodeBlock(match.index, codeRanges)) continue;
-        const rawPath = match[1].trim();
-        if (!rawPath || rawPath.startsWith('http')) continue;
-
-        const resolved = this.tryResolveWikiLink(rawPath, sourcePath, noteDir, vaultImages);
-        if (resolved) continue;
-
-        const line = content.substring(0, match.index).split('\n').length;
-        unresolvable.push({ rawLink: match[0], rawPath, isWiki: true, line });
-      }
-    }
-
-    return unresolvable;
-  }
-
-  /**
-   * Find all broken image links in content relative to noteDir.
-   */
-  private findBrokenLinks(content: string, noteDir: string, sourcePath: string, vaultImages?: Map<string, TFile[]>): BrokenMatch[] {
-    const broken: BrokenMatch[] = [];
-    let match: RegExpExecArray | null;
-
-    const codeRanges = (!this.settings || this.settings.scanCodeBlocks) ? [] : extractCodeBlockRanges(content);
-
-    MD_IMAGE_REGEX.lastIndex = 0;
-    while ((match = MD_IMAGE_REGEX.exec(content)) !== null) {
-      if (codeRanges.length > 0 && isInsideCodeBlock(match.index, codeRanges)) continue;
-
-      const rawPath = match[2];
-
-      if (rawPath.startsWith('http://') || rawPath.startsWith('https://')) continue;
-
-      const cleanedPath = this.cleanPath(rawPath);
-      const fileName = this.extractFileName(cleanedPath);
-      if (!fileName) continue;
-
-      const resolvedPath = this.resolveRelativePath(noteDir, cleanedPath);
-      const existing = this.app.vault.getAbstractFileByPath(normalizePath(resolvedPath));
-      if (existing instanceof TFile && IMAGE_EXTENSIONS.has(existing.extension.toLowerCase())) {
-        continue;
-      }
-
-      // Fallback: try with spaces encoded as %20.
-      // If the encoded path resolves, the link is valid — leave it as-is.
-      if (cleanedPath.includes(' ')) {
-        const encodedCleaned = cleanedPath.replace(/ /g, '%20');
-        const encodedResolved = this.resolveRelativePath(noteDir, encodedCleaned);
-        const encodedExisting = this.app.vault.getAbstractFileByPath(normalizePath(encodedResolved));
-        if (encodedExisting instanceof TFile && IMAGE_EXTENSIONS.has(encodedExisting.extension.toLowerCase())) {
-          continue;
-        }
-      }
-
-      broken.push({
-        from: match.index,
-        to: match.index + match[0].length,
-        alt: match[1],
-        rawPath,
-        cleanedPath,
-        fileName,
-        isWiki: false,
-      });
-    }
-
-    if (this.settings?.enableWikiLinkConversion) {
-      const wikiMatches = this.findWikiLinks(content, noteDir, sourcePath, codeRanges, vaultImages);
-      broken.push(...wikiMatches);
-    }
-
-    return broken;
-  }
-
-  /**
-   * Find wiki embed links that resolve to image files.
-   */
-  private findWikiLinks(
-    content: string,
-    noteDir: string,
-    sourcePath: string,
-    codeRanges: Range[],
-    vaultImages?: Map<string, TFile[]>
-  ): BrokenMatch[] {
-    const index = vaultImages ?? this.buildVaultImageIndex();
-    const matches: BrokenMatch[] = [];
-    let match: RegExpExecArray | null;
-
-    WIKI_EMBED_REGEX.lastIndex = 0;
-    while ((match = WIKI_EMBED_REGEX.exec(content)) !== null) {
-      if (codeRanges.length > 0 && isInsideCodeBlock(match.index, codeRanges)) continue;
-
-      const rawPath = match[1].trim();
-      if (!rawPath) continue;
-      if (rawPath.startsWith('http://') || rawPath.startsWith('https://')) continue;
-
-      const resolved = this.tryResolveWikiLink(rawPath, sourcePath, noteDir, index);
-      if (!resolved) continue;
-
-      const cleanedPath = PathUtils.computeRelativePath(noteDir, resolved.path);
-      const fileName = this.extractFileName(cleanedPath);
-      if (!fileName) continue;
-
-      matches.push({
-        from: match.index,
-        to: match.index + match[0].length,
-        alt: match[2] || '',
-        rawPath,
-        cleanedPath,
-        fileName,
-        isWiki: true,
-      });
-    }
-
-    return matches;
-  }
-
-  /**
-   * Compute replacement specs for broken links.
-   */
-  private computeReplacements(
-    broken: BrokenMatch[],
-    vaultImages: Map<string, TFile[]>,
-    noteDir: string
-  ): Array<{ from: number; to: number; insert: string; isWiki: boolean }> {
-    const replacements: Array<{ from: number; to: number; insert: string; isWiki: boolean }> = [];
-
-    for (const b of broken) {
-      let newPath: string | null = null;
-
-      if (b.isWiki) {
-        // Wiki matches: use cleanedPath directly (already resolved)
-        newPath = b.cleanedPath;
-      } else {
-        // Standard markdown: search vault for the file
-        newPath = this.searchVault(vaultImages, b.fileName, noteDir);
-      }
-
-      if (newPath) {
-        const encodedPath = newPath.replace(/ /g, '%20');
-        const newLink = `![${b.alt}](${encodedPath})`;
-        replacements.push({ from: b.from, to: b.to, insert: newLink, isWiki: b.isWiki });
-      }
-    }
-
-    return replacements;
-  }
-
-  private cleanPath(rawPath: string): string {
-    let path = rawPath.replace(/\\/g, '/');
-    path = path.replace(/^[A-Za-z]:\//, '');
-    path = path.replace(/^\/\/[^/]+\//, '');
-    path = path.replace(/^\/+/, '');
-    path = path.replace(/%20/g, ' ');
-    return path;
-  }
-
-  private extractFileName(cleanedPath: string): string | null {
-    const parts = cleanedPath.split('/');
-    const fileName = parts[parts.length - 1];
-    if (!fileName) return null;
-    const ext = fileName.split('.').pop()?.toLowerCase();
-    if (!ext || !IMAGE_EXTENSIONS.has(ext)) return null;
-    return fileName;
-  }
-
-  private resolveRelativePath(noteDir: string, relativePath: string): string {
-    if (relativePath.startsWith('./')) {
-      relativePath = relativePath.substring(2);
-    }
-    return noteDir ? `${noteDir}/${relativePath}` : relativePath;
+  private isImage(file: unknown): file is TFile {
+    return file instanceof TFile && IMAGE_EXTENSIONS.has(file.extension.toLowerCase());
   }
 
   private buildVaultImageIndex(): Map<string, TFile[]> {
     const index = new Map<string, TFile[]>();
-    const allFiles = this.app.vault.getFiles();
-
-    for (const file of allFiles) {
-      if (!IMAGE_EXTENSIONS.has(file.extension.toLowerCase())) continue;
-      const name = file.name.toLowerCase();
-      if (!index.has(name)) {
-        index.set(name, []);
-      }
-      index.get(name)!.push(file);
+    for (const file of this.app.vault.getFiles()) {
+      if (!this.isImage(file)) continue;
+      const files = index.get(file.name) ?? [];
+      files.push(file);
+      index.set(file.name, files);
     }
-
     return index;
   }
 
-  private searchVault(
-    index: Map<string, TFile[]>,
-    fileName: string,
-    noteDir: string
-  ): string | null {
-    // Tier 1: Exact match
-    let candidates = index.get(fileName.toLowerCase());
+  private uniqueName(path: string, images: Map<string, TFile[]>): TFile | null {
+    const name = path.split('/').pop() ?? '';
+    const candidates = images.get(name) ?? [];
+    return candidates.length === 1 ? candidates[0] : null;
+  }
 
-    // Tier 2: Try with spaces ↔ %20 (defensive — cleanPath already decodes,
-    // but the index may contain files with literal %20 or spaces in names)
-    if (!candidates || candidates.length === 0) {
-      const encoded = fileName.replace(/ /g, '%20');
-      candidates = index.get(encoded.toLowerCase());
+  private findLinks(content: string, noteDir: string, images: Map<string, TFile[]>, sourcePath: string): BrokenMatch[] {
+    const links: BrokenMatch[] = [];
+    const ranges = (!this.settings || this.settings.scanCodeBlocks) ? [] : extractCodeBlockRanges(content);
+    for (const image of parseMarkdownImages(content)) {
+      if (isInsideCodeBlock(image.index, ranges) || isRemoteImagePath(image.path)) continue;
+      const path = PathUtils.decodePath(image.path);
+      if (!IMAGE_EXTENSIONS.has(path.split('.').pop()?.toLowerCase() ?? '')) continue;
+      if (PathUtils.resolveVaultPath(noteDir, path) === null) continue;
+      const exact = resolveMarkdownImage(this.app, sourcePath, path);
+      if (exact && createMarkdownImage(image.alt, PathUtils.computeRelativePath(noteDir, exact.path), image.title) === image.raw) continue;
+      links.push({ from: image.index, to: image.index + image.raw.length, alt: image.alt,
+        path, title: image.title, isWiki: false, resolved: exact ?? this.uniqueName(path, images) });
     }
-    if (!candidates || candidates.length === 0) {
-      const decoded = fileName.replace(/%20/g, ' ');
-      candidates = index.get(decoded.toLowerCase());
-    }
-
-    // Tier 3: Fuzzy — strip (N) suffix from both search key and index keys
-    if (!candidates || candidates.length === 0) {
-      const stripped = this.stripDuplicateSuffix(fileName).toLowerCase();
-      for (const [key, files] of index) {
-        if (this.stripDuplicateSuffix(key).toLowerCase() === stripped) {
-          candidates = files;
-          break;
-        }
+    if (this.settings?.enableWikiLinkConversion) {
+      for (const image of parseWikiImages(content, this.settings.scanCodeBlocks)) {
+        const path = image.path;
+        if (!path || isRemoteImagePath(path)) continue;
+        const { file: resolved } = resolveWikiImage(this.app, sourcePath, path, this.settings.manualAttachmentFolder);
+        if (!resolved && !IMAGE_EXTENSIONS.has(path.split('.').pop()?.toLowerCase() ?? '')) continue;
+        links.push({ from: image.index, to: image.index + image.raw.length, alt: image.alt,
+          path, title: '', isWiki: true, resolved });
       }
     }
+    return links;
+  }
 
-    // Tier 4: Stem matching — strip all suffixes, match stem + same extension
-    if (!candidates || candidates.length === 0) {
-      const { stem, ext } = this.stripAllSuffixes(fileName);
-      if (stem && ext) {
-        for (const [key, files] of index) {
-          const { stem: keyStem, ext: keyExt } = this.stripAllSuffixes(key);
-          if (keyExt === ext && keyStem === stem) {
-            candidates = files;
-            break;
-          }
+  private replacements(content: string, noteDir: string, images: Map<string, TFile[]>, sourcePath: string):
+    Array<{ from: number; to: number; insert: string; isWiki: boolean }> {
+    return this.findLinks(content, noteDir, images, sourcePath).filter(link => link.resolved).map(link => ({
+      from: link.from, to: link.to, isWiki: link.isWiki,
+      insert: createMarkdownImage(link.alt, PathUtils.computeRelativePath(noteDir, link.resolved!.path), link.title),
+    }));
+  }
+
+  async repair(view: EditorView): Promise<RepairResult | null> {
+    const file = view.state.field(editorInfoField).file;
+    if (!file) return null;
+    const content = view.state.doc.toString();
+    const replacements = this.replacements(content, file.parent?.path ?? '', this.buildVaultImageIndex(), file.path);
+    if (replacements.length > 0) {
+      view.dispatch({ changes: replacements.sort((a, b) => a.from - b.from).map(({ from, to, insert }) => ({ from, to, insert })) });
+    }
+    const wikiConverted = replacements.filter(r => r.isWiki).length;
+    return { brokenFixed: replacements.length - wikiConverted, wikiConverted, total: replacements.length };
+  }
+
+  async repairAll(): Promise<RepairAllResult> {
+    const images = this.buildVaultImageIndex();
+    let scanned = 0;
+    let brokenFixed = 0;
+    let wikiConverted = 0;
+    for (const file of this.app.vault.getMarkdownFiles()) {
+      scanned++;
+      const scannedContent = await this.app.vault.read(file);
+      if (this.replacements(scannedContent, file.parent?.path ?? '', images, file.path).length === 0) continue;
+      await this.app.vault.process(file, content => {
+        const replacements = this.replacements(content, file.parent?.path ?? '', images, file.path);
+        for (const replacement of replacements.sort((a, b) => b.from - a.from)) {
+          content = content.slice(0, replacement.from) + replacement.insert + content.slice(replacement.to);
+          if (replacement.isWiki) wikiConverted++;
+          else brokenFixed++;
         }
-      }
+        return content;
+      });
     }
-
-    if (!candidates || candidates.length === 0) return null;
-
-    // Prefer .assets/ folder matches
-    const assetsCandidates = candidates.filter((f) => f.path.includes('.assets/'));
-    const pool = assetsCandidates.length > 0 ? assetsCandidates : candidates;
-
-    // Prefer same-directory matches
-    const sameDir = pool.filter((f) => f.parent?.path === noteDir);
-    const target = sameDir.length > 0 ? sameDir[0] : pool[0];
-
-    return PathUtils.computeRelativePath(noteDir, target.path);
+    return { scanned, brokenFixed, wikiConverted, total: brokenFixed + wikiConverted };
   }
 
-  /**
-   * Strip Obsidian's duplicate-name suffix: "img(1).png" -> "img.png"
-   * Only strips the LAST (N) before the extension.
-   */
-  private stripDuplicateSuffix(fileName: string): string {
-    return fileName.replace(/\(\d+\)(?=\.\w+$)/, '');
-  }
-
-  /**
-   * Strip all known suffix patterns to get the core filename stem.
-   * Handles combined suffixes like "image 1(1).png" iteratively.
-   * Returns { stem (lowercase, no extension), ext (lowercase) }.
-   */
-  private stripAllSuffixes(fileName: string): { stem: string; ext: string } {
-    const dotIdx = fileName.lastIndexOf('.');
-    if (dotIdx <= 0) return { stem: fileName.toLowerCase(), ext: '' };
-    const ext = fileName.substring(dotIdx + 1).toLowerCase();
-    let name = fileName.substring(0, dotIdx);
-
-    // Iteratively strip suffix patterns until stable
-    let prev = '';
-    while (name !== prev) {
-      prev = name;
-      name = name.replace(/-\d{10,}-\d+$/, '');  // Typora timestamp: -1780987736596-2
-      name = name.replace(/ \d+$/, '');            // Snipaste counter: " 1", " 1 2"
-      name = name.replace(/\(\d+\)$/, '');         // Obsidian duplicate: (1), (2)
-    }
-
-    return { stem: name.toLowerCase(), ext };
-  }
-
-  private getActiveFile(): TFile | null {
-    const leaf = this.app.workspace.activeLeaf;
-    if (!leaf) return null;
-    const file = (leaf.view as any).file;
-    return file instanceof TFile ? file : null;
+  findUnresolvableLinks(content: string, noteDir: string, sourcePath: string): UnresolvableLink[] {
+    const images = this.buildVaultImageIndex();
+    return this.findLinks(content, noteDir, images, sourcePath).filter(link => !link.resolved && (images.get(link.path.split('/').pop() ?? '')?.length ?? 0) === 0).map(link => ({
+      rawLink: content.slice(link.from, link.to), rawPath: link.path, isWiki: link.isWiki,
+      line: content.slice(0, link.from).split('\n').length,
+    }));
   }
 }

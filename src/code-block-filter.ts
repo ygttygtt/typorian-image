@@ -14,10 +14,10 @@ export function extractCodeBlockRanges(content: string): Range[] {
 
   while (i < len) {
     // Fenced code block: ``` or ~~~
-    if (
+    if ((
       (content[i] === '`' && content[i + 1] === '`' && content[i + 2] === '`') ||
       (content[i] === '~' && content[i + 1] === '~' && content[i + 2] === '~')
-    ) {
+    ) && /^(?: {0,3}> ?)* {0,3}$/.test(content.slice(content.lastIndexOf('\n', i - 1) + 1, i))) {
       const fenceChar = content[i];
       const fenceStart = i;
       let fenceLen = 0;
@@ -29,27 +29,30 @@ export function extractCodeBlockRanges(content: string): Range[] {
       if (lineEnd === -1) lineEnd = len;
       i = lineEnd + 1;
 
+      let closed = false;
       while (i < len) {
         const scanLineStart = i;
         let scanLineEnd = content.indexOf('\n', i);
         if (scanLineEnd === -1) scanLineEnd = len;
 
-        const line = content.substring(scanLineStart, scanLineEnd);
+        const line = content.substring(scanLineStart, scanLineEnd).replace(/^(?: {0,3}> ?)* {0,3}/, '');
         let j = 0;
         while (j < line.length && line[j] === fenceChar) j++;
 
         if (j >= fenceLen && j >= 3 && line.substring(j).trim() === '') {
           ranges.push({ from: fenceStart, to: scanLineEnd });
           i = scanLineEnd + 1;
+          closed = true;
           break;
         }
         i = scanLineEnd + 1;
       }
+      if (!closed) ranges.push({ from: fenceStart, to: len });
       continue;
     }
 
     // Inline code: ` ... `
-    if (content[i] === '`' && (i === 0 || content[i - 1] !== '`')) {
+    if (content[i] === '`' && (i === 0 || (content[i - 1] !== '`' && content[i - 1] !== '\\'))) {
       let backtickLen = 0;
       let j = i;
       while (j < len && content[j] === '`') {
