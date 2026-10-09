@@ -2,7 +2,7 @@
 
 An Obsidian plugin for editing the same Markdown notes in Obsidian and Typora. It saves inserted images beside the note in `${notename}.assets/` and writes standard Markdown image links.
 
-The current source version is **1.8.3**. Desktop installation and runtime verification are tracked separately in [the image-check implementation plan](docs/superpowers/plans/2026-10-08-image-check-workflow.md).
+The current source version is **1.8.4**. Desktop installation and runtime verification are tracked separately in [the image-check implementation plan](docs/superpowers/plans/2026-10-08-image-check-workflow.md).
 
 ## Features
 

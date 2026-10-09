@@ -69,7 +69,7 @@ export class WikiConverterModal extends Modal {
   private renderEmpty(icon: string, title: string, description: string): void {
     const empty = this.contentEl.createDiv({ cls: 'ti-empty' });
     setIcon(empty.createDiv({ cls: 'ti-empty-icon' }), icon);
-    empty.createEl('h3', { text: title });
+    empty.createEl('p', { text: title });
     empty.createEl('p', { text: description });
   }
 
@@ -124,7 +124,7 @@ export class WikiConverterModal extends Modal {
           this.checkboxes.set(index, checkbox);
           checkbox.addEventListener('change', () => this.updateButton());
         }
-        identity.createEl('strong', { text: item.image.name });
+        identity.createSpan({ text: item.image.name });
         const locate = header.createEl('button', { text: `${item.note.basename} · ${item.line}`, cls: 'ti-location', attr: { title: `${item.note.path}:${item.line}` } });
         locate.addEventListener('click', async () => {
           const leaf = this.app.workspace.getLeaf('tab');

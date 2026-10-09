@@ -15,7 +15,7 @@ export class ImageFilePicker extends FuzzySuggestModal<TFile> {
     const preview = row.createEl('img', { cls: 'ti-thumbnail', attr: { alt: match.item.name } });
     preview.src = this.app.vault.getResourcePath(match.item);
     const info = row.createDiv({ cls: 'ti-file-info' });
-    info.createEl('strong', { text: match.item.name });
+    info.createSpan({ text: match.item.name });
     info.createDiv({ text: match.item.path, cls: 'ti-path ti-muted' });
   }
   onChooseItem(file: TFile): void { this.choose(file); }
