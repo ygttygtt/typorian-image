@@ -2,7 +2,7 @@
 
 ## Scope and verification
 
-Typorian Image is an Obsidian plugin for Typora-compatible Markdown images. Current source version: **1.8.3**. Consult `docs/superpowers/plans/2026-10-08-image-check-workflow.md` for the current workflow and `docs/optimization-review-2026-10-08.md` for earlier 1.7.0 implementation and acceptance evidence. A package version, successful build, commit, installation, and desktop acceptance are different milestones.
+Typorian Image is an Obsidian plugin for Typora-compatible Markdown images. Current source version: **1.8.4**. Consult `docs/superpowers/plans/2026-10-08-image-check-workflow.md` for the current workflow and `docs/optimization-review-2026-10-08.md` for earlier 1.7.0 implementation and acceptance evidence. A package version, successful build, commit, installation, and desktop acceptance are different milestones.
 
 Follow the user's applicable AGENTS.md instructions. Do not add tests, checksums, implicit fallbacks, background services, or unrelated features. Do not run image cleanup, bulk link repair, or restructuring against the user's real vault without authorization for that data operation. Keep user notes, source images, unrelated settings, and changes by other contributors intact.
 

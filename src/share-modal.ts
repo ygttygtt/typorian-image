@@ -31,12 +31,7 @@ export class ShareModal extends Modal {
 
     this.exportPath = (file.parent?.path ?? '').replace(/^\/+$/, '');
 
-    contentEl.createEl('p', { cls: 'ti-intro', text: isZh()
-      ? '将当前笔记和引用的图片打包，方便分享。原笔记和图片保留。'
-      : 'Package the current note and its images for sharing. Original files are retained.' });
-    const context = contentEl.createDiv({ cls: 'ti-context' });
-    context.createSpan({ cls: 'ti-muted', text: isZh() ? '分享笔记' : 'Note to share' });
-    context.createSpan({ text: file.basename, attr: { title: file.path } });
+    contentEl.createEl('p', { text: `${isZh() ? '分享笔记：' : 'Note: '}${file.basename}`, attr: { title: file.path } });
     const form = contentEl.createDiv({ cls: 'ti-form-group' });
 
     // Export format

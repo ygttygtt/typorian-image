@@ -80,7 +80,7 @@ export class ImageCheckModal extends Modal {
     const tabs = el.createDiv({ cls: 'image-check-tabs', attr: { role: 'tablist', 'aria-label': phrase('检查方向', 'Check direction') } });
     for (const [tab, label] of [['issues', phrase('失效图片引用', 'Broken image references')], ['unused', phrase('未引用图片', 'Unreferenced images')]] as [CheckTab, string][]) {
       const button = this.button(tabs, label, () => { this.tab = tab; void this.refresh(); });
-      button.toggleClass('is-active', this.tab === tab);
+      button.toggleClass('mod-cta', this.tab === tab);
       button.dataset.focusKey = `tab-${tab}`;
       button.setAttribute('role', 'tab');
       button.setAttribute('aria-selected', String(this.tab === tab));
@@ -163,7 +163,7 @@ export class ImageCheckModal extends Modal {
   private emptyState(parent: HTMLElement, icon: string, title: string, description: string): void {
     const empty = parent.createDiv({ cls: 'ti-empty' });
     setIcon(empty.createDiv({ cls: 'ti-empty-icon' }), icon);
-    empty.createEl('h3', { text: title });
+    empty.createEl('p', { text: title });
     empty.createEl('p', { text: description });
   }
 
@@ -287,7 +287,7 @@ export class ImageCheckModal extends Modal {
     for (const related of [false, true]) {
       const group = images.filter(image => (image.relatedIssues.length > 0) === related);
       if (!group.length) continue;
-      list.createEl('h3', { text: related ? phrase('有关联的失效引用', 'Related to broken references') : phrase('未发现引用', 'No references found') });
+      list.createEl('p', { text: related ? phrase('有关联的失效引用', 'Related to broken references') : phrase('未发现引用', 'No references found') });
       for (const image of group) {
         const row = list.createDiv({ cls: 'ti-card' });
         const head = row.createDiv({ cls: 'ti-row-header' });

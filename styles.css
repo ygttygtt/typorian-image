@@ -1,218 +1,76 @@
-/* Hide the entire folder subtree, only inside the core file explorer. */
+/* Only hide assets in the core file explorer. */
 body.typorian-hide-assets .workspace-leaf-content[data-type="file-explorer"]
-.nav-folder:has(> .nav-folder-title[data-path$=".assets"]) {
-  display: none;
-}
+.nav-folder:has(> .nav-folder-title[data-path$=".assets"]) { display: none; }
 
-
-/* Shared visual system for every Typorian Image surface. */
-.typorian-ui .modal {
-  width: min(860px, 94vw);
-}
-.typorian-ui .modal .modal-content { margin-top: var(--ti-space-section); }
-.typorian-ui .image-check-tabs {
-  display: flex;
-  gap: 24px;
-  border-bottom: 1px solid var(--background-modifier-border);
-  margin-bottom: 16px;
-}
-.typorian-ui .image-check-tabs button {
-  box-shadow: none;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: var(--text-muted);
-  padding: 0 0 12px;
-  height: auto;
-  border-bottom: 2px solid transparent;
-}
-.typorian-ui .image-check-tabs button.is-active {
-  border-bottom-color: var(--interactive-accent);
-  color: var(--text-normal);
-  font-weight: 600;
-}
+/* Native typography and controls are inherited from Obsidian.
+   Extra layout is limited to result lists, thumbnails and the preview table. */
+.typorian-image-check-modal .modal,
+.typorian-converter .modal,
+.typorian-restructure-modal .modal { width: min(860px, 94vw); }
+.typorian-ui .image-check-tabs,
 .typorian-ui .ti-toolbar,
 .typorian-ui .ti-context,
 .typorian-ui .ti-utilities,
 .typorian-ui .ti-batch,
+.typorian-ui .ti-footer,
 .typorian-ui .ti-footer-actions,
 .typorian-ui .ti-row-header,
-.typorian-ui .ti-row-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
+.typorian-ui .ti-row-actions { display: flex; align-items: center; gap: 8px; }
+.typorian-ui .image-check-tabs { margin-bottom: 16px; }
 .typorian-ui .ti-toolbar { justify-content: space-between; }
 .typorian-ui .ti-context { min-width: 0; flex: 1; }
+.typorian-ui .ti-context-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .typorian-ui .ti-context select { flex-shrink: 0; }
-.typorian-ui .ti-context-name {
-  color: var(--text-muted);
-  font-size: var(--font-ui-small);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.typorian-ui .ti-icon-button {
-  background: transparent;
-  box-shadow: none;
-  padding: 6px;
-  width: 30px;
-  height: 30px;
-  color: var(--text-muted);
-}
-.typorian-ui .ti-icon-button:hover,
-.typorian-ui .ti-text-button:hover,
-.typorian-ui .ti-location:hover { background: var(--background-modifier-hover); }
-.typorian-ui .ti-summary { margin: 20px 0 10px; font-weight: 500; }
-.typorian-ui .ti-batch {
-  min-height: 48px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--background-modifier-border);
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-}
-.typorian-ui .ti-muted { color: var(--text-muted); font-size: var(--font-ui-small); }
-.typorian-ui .ti-footer-actions { margin-left: auto; }
-.typorian-ui .ti-select-all { display: flex; gap: 8px; align-items: center; white-space: nowrap; }
-.typorian-ui .ti-list { max-height: 48vh; overflow-y: auto; padding: 1px; }
-.typorian-ui .ti-card {
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 10px;
-  padding: 16px;
-  margin-bottom: 12px;
-}
-.typorian-ui .ti-row-header { margin-bottom: 10px; }
-.typorian-ui .ti-status { font-size: var(--font-ui-small); font-weight: 600; }
-.typorian-ui .ti-location {
-  margin-left: auto;
-  max-width: 60%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--font-ui-smaller);
-  color: var(--text-muted);
-}
-.typorian-ui .ti-location,
-.typorian-ui .ti-text-button,
-.typorian-ui .ti-secondary-action {
-  box-shadow: none;
-  background: transparent;
-  border: none;
-}
-.typorian-ui .ti-reference {
-  display: block;
-  padding: 10px 12px;
-  border-radius: 6px;
-  background: var(--background-secondary);
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  font-size: var(--font-ui-small);
-}
-.typorian-ui .ti-file { display: flex; gap: 14px; align-items: center; margin: 14px 0; }
-.typorian-ui .ti-thumbnail { width: 72px; height: 64px; object-fit: contain; border-radius: 6px; background: var(--background-secondary); }
+.typorian-ui .ti-icon-button { display: flex; align-items: center; justify-content: center; }
+.typorian-ui .ti-summary { margin: 16px 0 8px; }
+.typorian-ui .ti-batch { flex-wrap: wrap; margin-bottom: 12px; }
+.typorian-ui .ti-select-all { display: flex; align-items: center; gap: 8px; }
+.typorian-ui .ti-list { max-height: 48vh; overflow-y: auto; }
+.typorian-ui .ti-card { padding: 12px 0; border-bottom: 1px solid var(--background-modifier-border); }
+.typorian-ui .ti-card:last-child { border-bottom: 0; }
+.typorian-ui .ti-row-header { margin-bottom: 8px; }
+.typorian-ui .ti-location { margin-left: auto; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.typorian-ui .ti-reference { display: block; margin: 8px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.typorian-ui .ti-file { display: flex; align-items: center; gap: 12px; margin: 8px 0; }
+.typorian-ui .ti-thumbnail { width: 64px; height: 64px; object-fit: contain; flex-shrink: 0; }
 .typorian-ui .ti-file-info { min-width: 0; flex: 1; }
-.typorian-ui .ti-text-button { padding: 0; color: var(--text-normal); height: auto; white-space: normal; text-align: left; overflow-wrap: anywhere; }
-.typorian-ui .ti-path { display: block; color: var(--text-muted); font-size: var(--font-ui-smaller); overflow-wrap: anywhere; margin-top: 4px; }
-.typorian-ui .image-check-target select { max-width: 100%; margin-top: 12px; }
-.typorian-ui .ti-row-actions { justify-content: flex-end; margin-top: 14px; flex-wrap: wrap; }
-.typorian-ui .ti-secondary-action { color: var(--text-muted); }
-.typorian-ui .ti-secondary-action:hover { color: var(--text-normal); background: var(--background-modifier-hover); }
-.typorian-ui .ti-destructive-action:hover { color: var(--text-error); }
+.typorian-ui .ti-path { display: block; overflow-wrap: anywhere; }
 .typorian-ui .ti-muted,
-.typorian-ui .ti-details { color: var(--text-muted); font-size: var(--font-ui-small); overflow-wrap: anywhere; }
+.typorian-ui .ti-context-name,
+.typorian-ui .ti-details,
+.typorian-ui .ti-footnote { color: var(--text-muted); }
 .typorian-ui .ti-details { margin-top: 8px; }
-.typorian-ui .ti-feedback { padding: 12px; border-radius: 8px; background: var(--background-secondary); font-size: var(--font-ui-small); }
-.typorian-ui .ti-empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 52px 20px; }
-.typorian-ui .ti-empty-icon { color: var(--text-muted); margin-bottom: 12px; }
-.typorian-ui .ti-empty-icon svg { width: 32px; height: 32px; }
-.typorian-ui .ti-empty h3 { margin: 0 0 8px; font-size: var(--font-ui-medium); }
-.typorian-ui .ti-empty p { color: var(--text-muted); margin: 0; font-size: var(--font-ui-small); }
-.typorian-ui .ti-footnote { color: var(--text-muted); font-size: var(--font-ui-smaller); margin: 12px 0 0; }
-@media (max-width: 600px) {
-  .typorian-ui .ti-context { align-items: flex-start; flex-direction: column; gap: 6px; }
-  .typorian-ui .ti-footer-actions { width: 100%; justify-content: flex-end; }
-}
-
-/* Shared forms, list tools, settings and native picker. */
-.typorian-ui {
-  --ti-control-height: 32px;
-  --ti-radius: 10px;
-  --ti-space-field: 12px;
-  --ti-space-section: 24px;
-}
-.typorian-ui .modal .modal-title { margin: 0; font-size: var(--font-ui-large); font-weight: 600; }
-.typorian-ui .modal { max-height: 88vh; }
-.typorian-ui button { min-height: var(--ti-control-height); border-radius: 6px; }
-.typorian-ui input[type="text"], .typorian-ui select { min-height: var(--ti-control-height); border-radius: 6px; }
-.typorian-ui button:focus-visible, .typorian-ui select:focus-visible, .typorian-ui input:focus-visible {
-  outline: 2px solid var(--interactive-accent); outline-offset: 2px;
-}
-.typorian-ui .modal .ti-intro { margin: 0 0 18px; color: var(--text-muted); font-size: var(--font-ui-small); line-height: 1.6; }
-.typorian-ui .ti-footer {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding-top: 16px; margin-top: var(--ti-space-section); border-top: 1px solid var(--background-modifier-border);
-}
-.typorian-ui .ti-footer-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
-.typorian-ui .ti-muted { font-size: var(--font-ui-small); color: var(--text-muted); line-height: 1.5; }
-.typorian-ui .ti-path { overflow-wrap: anywhere; color: var(--text-muted); font-size: var(--font-ui-smaller); }
-.typorian-ui .ti-warning { padding: 12px 14px; border-radius: 8px; background: var(--background-secondary); color: var(--text-muted); font-size: var(--font-ui-small); line-height: 1.5; }
-.typorian-ui .ti-warning.is-overwrite { color: var(--text-warning); border-left: 3px solid var(--text-warning); }
-.typorian-ui .ti-form-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ti-space-field);
-  margin: var(--ti-space-section) 0 0;
-}
-.typorian-ui .setting-item { padding: 16px 0; gap: 24px; }
-.typorian-ui .setting-item-name { font-size: var(--font-ui-medium); }
-.typorian-ui .setting-item-description { font-size: var(--font-ui-small); line-height: 1.5; }
-.typorian-ui .setting-item-control { gap: 8px; }
-.typorian-ui .setting-item-control input[type="text"] { width: min(280px, 38vw); }
-.typorian-ui .ti-settings-section { margin-bottom: 24px; }
-.typorian-ui .ti-settings-section h3 { font-size: var(--font-ui-medium); margin: 0; padding: 12px 0; border-bottom: 1px solid var(--background-modifier-border); }
-.typorian-ui .ti-settings-guide { border: 1px solid var(--background-modifier-border); border-radius: var(--ti-radius); padding: 14px 16px; margin: 12px 0; }
-.typorian-ui .ti-settings-guide summary { font-weight: 500; cursor: pointer; }
-.typorian-ui .typorian-icon-preview { display: inline-flex; margin-right: 8px; vertical-align: middle; color: var(--text-muted); }
+.typorian-ui .ti-row-actions { justify-content: flex-end; flex-wrap: wrap; margin-top: 12px; }
+.typorian-ui .image-check-target select { max-width: 100%; margin-top: 8px; }
+.typorian-ui .ti-empty { text-align: center; padding: 24px 0; }
+.typorian-ui .ti-empty-icon svg { width: 24px; height: 24px; }
+.typorian-ui .ti-empty p { margin: 8px 0; }
+.typorian-ui .ti-footer { flex-wrap: wrap; padding-top: 12px; margin-top: 12px; border-top: 1px solid var(--background-modifier-border); }
+.typorian-ui .ti-footer-actions { margin-left: auto; }
+.typorian-ui .ti-footnote { margin: 12px 0 0; }
+.typorian-ui .ti-form-group { margin-top: 16px; }
+.typorian-ui .ti-warning.is-overwrite { color: var(--text-warning); }
+.typorian-ui .ti-settings-guide { margin: 16px 0; }
+.typorian-ui .ti-settings-guide summary { cursor: pointer; }
+.typorian-ui .typorian-icon-preview { display: inline-flex; margin-right: 8px; vertical-align: middle; }
 .typorian-ui .typorian-icon-preview svg { width: 16px; height: 16px; }
-.typorian-ui .restructure-table-container { max-height: 38vh; overflow: auto; border: 1px solid var(--background-modifier-border); border-radius: var(--ti-radius); }
-.typorian-ui .restructure-table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: var(--font-ui-small); }
-.typorian-ui .restructure-table th { position: sticky; top: 0; background: var(--background-secondary); text-align: left; padding: 12px; border-bottom: 1px solid var(--background-modifier-border); font-weight: 500; }
-.typorian-ui .restructure-table td { padding: 12px; border-bottom: 1px solid var(--background-modifier-border); vertical-align: top; overflow-wrap: anywhere; }
-.typorian-ui .restructure-table tr:last-child td { border-bottom: 0; }
+.typorian-ui .restructure-table-container { max-height: 38vh; overflow: auto; }
+.typorian-ui .restructure-table { width: 100%; table-layout: fixed; border-collapse: collapse; }
+.typorian-ui .restructure-table th { position: sticky; top: 0; background: var(--background-primary); text-align: left; }
+.typorian-ui .restructure-table td,
+.typorian-ui .restructure-table th { padding: 8px; border-bottom: 1px solid var(--background-modifier-border); overflow-wrap: anywhere; }
 .typorian-ui .restructure-row-selectable { cursor: pointer; }
 .typorian-ui .restructure-row-selectable:hover { background: var(--background-modifier-hover); }
-.typorian-ui .restructure-th-check, .typorian-ui .restructure-td-check { width: 38px; text-align: center; }
+.typorian-ui .restructure-th-check,
+.typorian-ui .restructure-td-check { width: 32px; text-align: center; }
 .typorian-ui .restructure-th-note { width: 36%; }
-.typorian-ui .restructure-td-assets { color: var(--text-muted); font-size: var(--font-ui-smaller); }
-.typorian-ui .restructure-th-images, .typorian-ui .restructure-td-images { width: 70px; text-align: center; }
+.typorian-ui .restructure-th-images,
+.typorian-ui .restructure-td-images { width: 64px; text-align: center; }
 .typorian-ui .restructure-row-empty { color: var(--text-muted); }
-.typorian-ui .restructure-confirm-input { width: 140px; }
-.typorian-ui .suggestion-item { padding: 12px 16px; border-radius: 6px; }
-.typorian-ui .suggestion-container { padding: 6px; }
+.typorian-ui .restructure-confirm-group label { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.typorian-ui .ti-list .ti-toolbar { margin-bottom: 8px; }
+.typorian-ui .ti-batch .ti-muted { margin-left: auto; }
 @media (max-width: 600px) {
-  .typorian-ui .ti-footer, .typorian-ui .ti-toolbar { flex-wrap: wrap; }
-  .typorian-ui .setting-item { align-items: flex-start; gap: 12px; flex-direction: column; }
-  .typorian-ui .setting-item-control { width: 100%; justify-content: flex-start; }
-  .typorian-ui .setting-item-control input[type="text"] { width: 100%; }
+  .typorian-ui .ti-toolbar, .typorian-ui .ti-context, .typorian-ui .ti-row-header { flex-wrap: wrap; }
   .typorian-ui .restructure-table { min-width: 520px; }
 }
-
-.typorian-ui .ti-footer > .ti-muted { flex: 1; min-width: 0; }
-.typorian-ui .ti-footer-actions { flex-shrink: 0; }
-.typorian-ui .restructure-confirm-group label { display: flex; flex-direction: column; gap: 8px; color: var(--text-muted); font-size: var(--font-ui-small); }
-.typorian-ui .modal .ti-form-group .setting-item {
-  align-items: flex-start;
-  padding: 0;
-  margin: 0;
-  border: 0;
-}
-.typorian-ui .modal .ti-form-group .setting-item-info { margin: 0; }
-.typorian-ui .modal .ti-form-group > p { margin: 0; }
-.typorian-ui .ti-form-group .setting-item:not(:has(.checkbox-container)) { flex-direction: column; gap: 8px; }
-.typorian-ui .ti-form-group .setting-item-control { justify-content: flex-start; }
-.typorian-ui .ti-form-group .setting-item-control input[type="text"] { width: min(440px, 72vw); }
-.typorian-ui .ti-form-group .setting-item:last-child { border-bottom: 0; }
-.typorian-ui .ti-settings-section .setting-item:last-child { border-bottom: 0; }
-.typorian-ui .ti-list .ti-toolbar { margin-bottom: 12px; }
-.typorian-ui .ti-list h3 { font-size: var(--font-ui-small); color: var(--text-muted); font-weight: 500; }
-.typorian-ui .ti-batch .ti-muted { margin-left: auto; }
